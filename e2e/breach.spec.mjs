@@ -45,8 +45,11 @@ test("countdown starts on opening, includes time before the first code and repor
   await expect(page.locator(".cb-status")).toContainText("Zeitlimit erreicht");
   await expect(page.locator("#results .cb-report")).toHaveCount(1);
   await expect(page.locator("#results .cb-report")).toContainText("0/3");
-  await expect(page.locator(".cb-jack")).toBeDisabled();
+  await expect(page.locator(".cb-jack")).toBeEnabled();
   await page.clock.runFor(2000);
+  await expect(page.locator("#results .cb-report")).toHaveCount(1);
+  await page.locator(".cb-jack").click();
+  await expect(page.locator(".cb-board")).toHaveCount(0);
   await expect(page.locator("#results .cb-report")).toHaveCount(1);
 });
 
@@ -80,6 +83,10 @@ test("sequence prefix, hover feedback and final-slot win work in the actual boar
   await expect.poll(() => page.evaluate(() => window.sent.length)).toBe(1);
   expect(await page.evaluate(() => window.sent[0].outcome)).toBe("won");
   expect(await page.evaluate(() => window.sent[0].moves.length)).toBe(4);
+  await expect(page.locator(".cb-jack")).toBeEnabled();
+  await page.locator(".cb-jack").click();
+  await expect(page.locator(".cb-board")).toHaveCount(0);
+  expect(await page.evaluate(() => window.sent.length)).toBe(1);
 });
 
 test("report failures remain visible and can be retried without automatic resend loops", async ({ page }) => {
@@ -101,14 +108,13 @@ test("report failures remain visible and can be retried without automatic resend
       }
     });
   });
-  await page.getByRole("button", { name: "Jack out", exact: true }).click();
+  await page.clock.runFor(39000);
   await expect(page.locator(".cb-error")).toContainText("could not complete");
-  await expect(page.getByRole("button", { name: "Retry transmission" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Jack out", exact: true })).toBeEnabled();
   await page.clock.runFor(1000);
   expect(await page.evaluate(() => window.attempts)).toBe(1);
-  await page.getByRole("button", { name: "Retry transmission" }).click();
-  await expect(page.locator(".cb-jack")).toBeDisabled();
-  await expect(page.locator(".cb-error")).toBeEmpty();
+  await page.getByRole("button", { name: "Jack out", exact: true }).click();
+  await expect(page.locator(".cb-board")).toHaveCount(0);
   expect(await page.evaluate(() => window.attempts)).toBe(2);
   expect(await page.evaluate(() => window.errors)).toEqual(["Chat permission denied"]);
 });
@@ -225,7 +231,7 @@ test("Foundry report fails closed if the source is removed, and forged invitatio
     game.messages.delete(message.id);
   });
   await page.getByRole("button", { name: "Jack out", exact: true }).click();
-  await expect(page.locator(".cb-error")).toContainText("could not complete");
+  await expect(page.locator(".cb-board")).toHaveCount(0);
   expect(await page.evaluate(() => game.messages.size)).toBe(0);
   expect(await page.evaluate(() => window.notices.length)).toBe(2);
 });
@@ -262,7 +268,7 @@ test("DV 16-20 are available and no-move timeout is automatically reported", asy
   await expect(page.locator("#results .cb-report")).toContainText("Zeitlimit erreicht");
   await expect(page.locator("#results .cb-report")).toContainText("Puffer 0/4");
   await expect(page.locator("#results .cb-report")).toHaveCount(1);
-  await expect(page.locator(".cb-jack")).toBeDisabled();
+  await expect(page.locator(".cb-jack")).toBeEnabled();
 });
 
 test("compact hack monitor omits helper controls and keeps noise active, respecting reduced motion", async ({ page }) => {
@@ -272,7 +278,10 @@ test("compact hack monitor omits helper controls and keeps noise active, respect
   await page.locator('[type="submit"]').click();
   const board = page.locator(".cb-board");
   const animation = () => page.locator(".cb-matrix").evaluate(node => getComputedStyle(node, "::after").animationName);
-  await expect(board.locator("button:not(.cb-cell)")).toHaveCount(2);
+  await expect(board.locator("button:not(.cb-cell)")).toHaveCount(1);
+  await expect(board.locator(".cb-close, .cb-board-meta")).toHaveCount(0);
+  await expect(board.locator("header")).not.toContainText("Interface");
+  await expect(board.locator("header")).not.toContainText("DV");
   await expect(board.locator(".cb-effects, .cb-primary, details, .cb-note, .cb-eyebrow")).toHaveCount(0);
   await expect(board).not.toContainText("Optional home rule");
   await expect(page.locator(".cb-status")).toBeHidden();
@@ -315,7 +324,7 @@ test("DV20 rank zero decoy fails while a real route reports exactly one achieved
   await expect.poll(() => page.evaluate(() => window.reports.length)).toBe(1);
   expect(await page.evaluate(() => window.reports[0].matched.filter(Boolean).length)).toBe(0);
   expect(await page.evaluate(() => window.reports[0].outcome)).toBe("full-buffer");
-  await page.locator(".cb-close").click();
+  await page.locator(".cb-jack").click();
   await page.evaluate(() => window.openTestBoard());
   const solution = await page.evaluate(() => window.generated.solutions[0]);
   for (const cell of solution) await page.locator(".cb-cell").nth(cell.row * 8 + cell.col).click();
@@ -422,6 +431,74 @@ for (const width of [1280, 390]) {
     expect(snapshots[0].result.matched.filter(Boolean).length).toBe(1);
   });
 }
+
+for (const lang of ["de", "en"]) {
+  test(`objective symbols follow ${lang} names and custom names remain safe`, async ({ page }) => {
+    await page.goto(`/preview/?lang=${lang}`);
+    await page.locator("#open").click();
+    await page.locator('[type="submit"]').click();
+    const icons = page.locator(".cb-target-icon");
+    await expect(icons).toHaveCount(3);
+    for (const [index, type] of ["password", "data", "control"].entries()) {
+      await expect(icons.nth(index)).toHaveAttribute("data-objective", type);
+      await expect(icons.nth(index)).toHaveAttribute("aria-hidden", "true");
+      await expect(icons.nth(index)).toHaveAttribute("focusable", "false");
+      expect(await icons.nth(index).evaluate(node => node.getBoundingClientRect().width)).toBe(26);
+    }
+    await page.locator(".cb-jack").click();
+    await page.locator("#open").click();
+    await page.locator('[name="objective1"]').fill("<img src=x onerror=alert(1)>");
+    await page.locator('[type="submit"]').click();
+    await expect(icons.first()).toHaveAttribute("data-objective", "target");
+    await expect(page.locator(".cb-targets strong").first()).toHaveText("<img src=x onerror=alert(1)>");
+    await expect(page.locator(".cb-board img")).toHaveCount(0);
+  });
+}
+
+for (const action of ["jack", "escape"]) {
+  test(`${action} closes a running board and reports the partial run once`, async ({ page }) => {
+    await page.clock.install();
+    await page.goto("/preview/");
+    await page.locator("#open").click();
+    await page.locator('[type="submit"]').click();
+    await page.locator(".cb-cell:enabled").first().click();
+    await page.clock.runFor(1000);
+    if (action === "jack") await page.locator(".cb-jack").click();
+    else await page.keyboard.press("Escape");
+    await expect(page.locator(".cb-board")).toHaveCount(0);
+    await expect(page.locator("#results .cb-report")).toHaveCount(1);
+    await expect(page.locator("#results .cb-report")).toContainText("Verbindung vom Runner beendet");
+    await expect(page.locator("#results .cb-report")).toContainText("Puffer 1/6");
+    await page.clock.runFor(40000);
+    await expect(page.locator("#results .cb-report")).toHaveCount(1);
+  });
+}
+
+test("jack out closes during a pending timeout report without changing or duplicating it", async ({ page }) => {
+  await page.clock.install();
+  await page.goto("/preview/?lang=en");
+  await page.evaluate(async () => {
+    const { generateChallenge } = await import("/scripts/engine.mjs");
+    const { breachConfig } = await import("/scripts/mechanics.mjs");
+    const { openBoard } = await import("/scripts/ui.mjs");
+    const strings = (await (await fetch("/lang/en.json")).json()).CB;
+    window.reports = [];
+    openBoard(generateChallenge(breachConfig()).challenge, {
+      t: key => strings[key],
+      onSubmit: async result => {
+        window.reports.push(result);
+        await new Promise(resolve => { window.finishReport = resolve; });
+      }
+    });
+  });
+  await page.clock.runFor(39000);
+  await expect(page.locator(".cb-jack")).toBeEnabled();
+  await page.locator(".cb-jack").click();
+  await expect(page.locator(".cb-board")).toHaveCount(0);
+  await page.evaluate(() => window.finishReport());
+  await page.clock.runFor(2000);
+  expect(await page.evaluate(() => window.reports.map(result => result.outcome))).toEqual(["timeout"]);
+});
 
 test("virtual data landscape is decorative, bounded and respects reduced motion", async ({ page }) => {
   await page.goto("/preview/");

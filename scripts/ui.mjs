@@ -32,6 +32,29 @@ function dialog(title, t) {
   return root;
 }
 
+function objectiveIcon(name) {
+  const label = name.toLowerCase();
+  const type = /backdoor|password|passwort/.test(label) ? "password"
+    : /eye-dee|daten|data/.test(label) ? "data"
+    : /control|steuer|knoten|node/.test(label) ? "control" : "target";
+  const paths = {
+    password: "M6 10V7a6 6 0 0 1 12 0v3M4 10h16v12H4zM12 14v4",
+    data: "M4 3h16v18H4zM8 7h8M8 11h8M8 15h3M14 15h2M8 18h8",
+    control: "M9 9h6v6H9zM12 2v7M12 15v7M2 12h7M15 12h7M9 2h6M9 22h6M2 9v6M22 9v6",
+    target: "M12 2v4M12 18v4M2 12h4M18 12h4M12 6a6 6 0 1 0 0 12a6 6 0 1 0 0-12M10 12h4"
+  };
+  const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  icon.setAttribute("class", "cb-target-icon");
+  icon.setAttribute("viewBox", "0 0 24 24");
+  icon.setAttribute("aria-hidden", "true");
+  icon.setAttribute("focusable", "false");
+  icon.setAttribute("data-objective", type);
+  const path = document.createElementNS(icon.namespaceURI, "path");
+  path.setAttribute("d", paths[type]);
+  icon.append(path);
+  return icon;
+}
+
 export function openBoard(challenge, { t, onSubmit = null, onError = console.error } = {}) {
   const puzzle = new Puzzle(challenge);
   const root = dialog("Cipher Breach", t);
@@ -53,10 +76,7 @@ export function openBoard(challenge, { t, onSubmit = null, onError = console.err
   const header = root.querySelector("header");
   header.querySelector(".cb-wordmark").remove();
   header.querySelector("h2").textContent = t("floorBreach");
-  if (config.mode === "netrun") header.append(element("span", {
-    className: "cb-board-meta", text: `DV ${config.dv} / Interface ${config.rank}`
-  }));
-  header.append(header.querySelector(".cb-close"));
+  header.querySelector(".cb-close").remove();
   const status = element("p", { className: "cb-status", attributes: { role: "status", "aria-live": "polite" } });
   const time = element("strong", { className: "cb-time" });
   const timeBar = element("progress", { attributes: { max: config.seconds, value: config.seconds, "aria-label": t("time") } });
@@ -98,12 +118,13 @@ export function openBoard(challenge, { t, onSubmit = null, onError = console.err
   }));
   const targets = element("ol", { className: "cb-targets" });
   const targetNodes = puzzle.challenge.targets.map((sequence, index) => {
+    const name = puzzle.challenge.names?.[index] ?? `${t("objective")} ${index + 1}`;
     const node = element("li");
     node.append(
       element("div", { className: "cb-sequence" }, sequence.map(code => element("code", { text: code }))),
       element("div", { className: "cb-target-label" }, [
-        element("small", { className: "cb-target-index", text: String(index + 1).padStart(2, "0"), attributes: { "aria-hidden": "true" } }),
-        element("strong", { text: puzzle.challenge.names?.[index] ?? `${t("objective")} ${index + 1}` })
+        objectiveIcon(name),
+        element("strong", { text: name })
       ]),
       element("span", { className: "cb-target-status" })
     );
@@ -119,17 +140,21 @@ export function openBoard(challenge, { t, onSubmit = null, onError = console.err
   ]));
   const errorNode = element("p", { className: "cb-error", attributes: { role: "alert" } });
   const jack = button(t("jackOut"), () => {
-    if (sendFailed) void sendResult();
-    else {
-      try { puzzle.jackOut(); refresh(); } catch (error) { fail(error); }
+    try {
+      if (["ready", "running"].includes(puzzle.tick())) {
+        puzzle.jackOut();
+      } else if (sendFailed) void sendResult();
+      refresh();
+    } catch (error) {
+      fail(error);
     }
+    root.close();
   }, "cb-jack");
   async function sendResult() {
     if (submitted || submitting) return;
     submitting = true;
     sendFailed = false;
     errorNode.textContent = "";
-    jack.disabled = true;
     try {
       await onSubmit(puzzle.result());
       submitted = true;
@@ -208,8 +233,6 @@ export function openBoard(challenge, { t, onSubmit = null, onError = console.err
       node.lastChild.textContent = puzzle.matched[index] ? t("matched") : ended ? t("missed") : "";
     });
     highlight(hovered);
-    jack.disabled = submitting || (ended && !sendFailed);
-    jack.textContent = t(sendFailed ? "retryReport" : "jackOut");
     if (ended && onSubmit && !autoAttempted) {
       autoAttempted = true;
       void sendResult();
@@ -220,6 +243,10 @@ export function openBoard(challenge, { t, onSubmit = null, onError = console.err
     try { refresh(); } catch (error) { clearInterval(interval); fail(error); }
   }, 200);
   root.addEventListener("close", () => clearInterval(interval), { once: true });
+  root.addEventListener("cancel", event => {
+    event.preventDefault();
+    jack.click();
+  });
   return root;
 }
 
