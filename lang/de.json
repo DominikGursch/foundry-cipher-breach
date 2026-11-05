@@ -76,6 +76,7 @@
     "effectsOn": "Bildschirmeffekte an",
     "floorBreach": "NET / FLOOR BREACH",
     "retryReport": "Übertragung wiederholen",
-    "hardHint": "DV 16–20: zwölf Codes, getrennte Zielrouten und falsche Einstiege. Jedes Ziel ist einzeln erreichbar, nicht zwingend alle in einem Puffer. Bei DV20 und Interface 0 ist höchstens eines von drei Zielen erreichbar."
+    "hardHint": "DV 16–20: zwölf Codes, getrennte Zielrouten und falsche Einstiege. Jedes Ziel ist einzeln erreichbar, nicht zwingend alle in einem Puffer. Bei DV20 und Interface 0 ist höchstens eines von drei Zielen erreichbar.",
+    "uploadTargets": "Upload-Zielsequenzen"
   }
 }

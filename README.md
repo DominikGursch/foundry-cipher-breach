@@ -57,7 +57,9 @@ Privater Chat geht an Teilnehmer und alle SLs, öffentlicher an alle. Die Chat-K
 
 ## Deep-Dive-Oberfläche
 
-Eigenständig gestaltetes Terminal in den Farben des Foundry-RED-Screenshots: kräftiges Dunkelrot, hellgraue Zielflächen und schwarze Trennleisten. Kompakte Kopfzeile mit DV, Interface und Countdown; links die dunkle Code-Matrix als Monitor, rechts Puffer, Ziele und Ausstöpseln. Keine Hausregelhinweise, Spielanleitung, Effekt-Schalter oder Senden-Knöpfe im Spielfeld. Lizenz- und Vertrauensinformationen bleiben in Dokumentation und Chat erhalten.
+Eigenständig gestaltetes rotes Breach-Terminal auf dunklem Hintergrund: feine Rahmenlinien, eine farbige Matrix-Kopfzeile und nummerierte Upload-Ziele. Timer und Puffer stehen oben in zwei ausgerichteten Spalten; darunter links die Code-Matrix als Monitor, rechts die Ziele und Ausstöpseln. Auf schmalen Bildschirmen werden die Bereiche untereinander angeordnet. Keine Hausregelhinweise, Spielanleitung, Effekt-Schalter oder Senden-Knöpfe im Spielfeld. Lizenz- und Vertrauensinformationen bleiben in Dokumentation und Chat erhalten.
+
+**Deutsch und Englisch verwenden dieselbe Engine, dieselben DOM-Komponenten und dieselbe CSS-Datei.** Nur Texte und frei benannte Ziele werden übersetzt; die Sprache verändert weder Codealphabet, Zufallsgenerator, Schwierigkeit noch Zeit oder Puffer. Browserprüfungen vergleichen beide Sprachen auf Desktop und Mobilgeräten: Konfigurationswerte, DOM-Struktur, CSS-Layout, Matrix, Zielsequenzen und Ergebnisse stimmen bei gleichem Zufallsstart überein.
 
 Scanlines, schwaches Bildrauschen und eine langsame Monitorstörung sind immer aktiv, auch im Ergebnisbild. Sie verändern nur transparente Ebenen über der Matrix; Codes und Bedienelemente bewegen sich nicht. Keine schnellen Lichtblitze oder Vollbild-Helligkeitswechsel. Die Systemeinstellung **Bewegung reduzieren / prefers-reduced-motion** unterdrückt die Animationen weiterhin und behält die statische Monitorstruktur. Es werden keine offiziellen Layouts, Logos, Fonts oder Grafiken kopiert.
 
@@ -77,6 +79,17 @@ Scanlines, schwaches Bildrauschen und eine langsame Monitorstörung sind immer a
 DV 6–14 stammen aus der Referenzmechanik; DV 16, 18 und 20 sind eine eigene Fortsetzung dieser Hausregel. Es sind weiterhin höchstens drei Ziele möglich. Die Zeit-/Pufferformeln bleiben unverändert; auch bei DV 20 gibt es mindestens 15 Sekunden. Lange Sequenzen werden bei niedrigen Rängen wie bisher auf den Puffer begrenzt.
 
 **Puffer:** `4 + Math.ceil(Interface-Rang / 2)`
+
+| Interface-Rang | Pufferplätze |
+|---|---|
+| 0 | 4 |
+| 1–2 | 5 |
+| 3–4 | 6 |
+| 5–6 | 7 |
+| 7–8 | 8 |
+| 9–10 | 9 |
+
+Der DV verändert die Pufferlänge nicht. Er beeinflusst Matrixgröße, Zielsequenzen und Zeit.
 
 **Zeit in Sekunden:** `Math.max(15, 25 + 4 * Interface-Rang - (DV - 6))`
 
@@ -137,7 +150,7 @@ npm run preview
 
 Lokale Vorschau: `http://127.0.0.1:8080/preview/`. Optional `PORT=8090 npm run preview`. Alternativ den Repository-Root mit einem statischen HTTP-Server bereitstellen; `file://` unterstützt die Modul-/Sprachdateien nicht.
 
-Tests decken alle unterstützten DV-/Rang-/Zielkombinationen, Referenzformeln, gemeinsame Lösbarkeit bei niedrigen DVs, einzelne Lösbarkeit und falsche Einstiege bei hohen DVs, Alt-Schemata, Timer, Überlappung, Teilerfolge und Paketformat ab. Der DV20-/Rang-0-Test prüft 100 reproduzierbare Rätsel auf unterschiedliche Ziele und höchstens einen Zieltreffer pro Vierer-Puffer. Chromium prüft Konfiguration, Charakterauslesung, Countdown, Hervorhebungen, automatisches Melden, Fehlerwiederholung und mobile Darstellung. Foundry-Hooks/Berechtigungsgrenzen werden mit einem Adapter-Testdouble geprüft, **nicht mit einem laufenden Foundry-Server**.
+Tests decken alle unterstützten DV-/Rang-/Zielkombinationen, Referenzformeln, gemeinsame Lösbarkeit bei niedrigen DVs, einzelne Lösbarkeit und falsche Einstiege bei hohen DVs, Alt-Schemata, Timer, Überlappung, Teilerfolge und Paketformat ab. Der DV20-/Rang-0-Test prüft 100 reproduzierbare Rätsel auf unterschiedliche Ziele und höchstens einen Zieltreffer pro Vierer-Puffer. Chromium prüft Konfiguration, Charakterauslesung, Countdown, Hervorhebungen, automatisches Melden, Fehlerwiederholung, DE-/EN-Parität und mobile Darstellung. Foundry-Hooks/Berechtigungsgrenzen werden mit einem Adapter-Testdouble geprüft, **nicht mit einem laufenden Foundry-Server**.
 
 `npm run package` erzeugt `dist/foundry-cipher-breach-v0.1.0.zip` und `dist/module.json`. Das ZIP enthält ausschließlich Laufzeit, Manifest und Lizenz-/Dokumentationsdateien; `dist` ist unversioniert. Release erst nach Prüfung der beabsichtigten Revision und möglichst einem echten Foundry-v12-Test veröffentlichen:
 
@@ -147,7 +160,7 @@ gh release create v0.1.0 dist/module.json dist/foundry-cipher-breach-v0.1.0.zip 
 
 ## English
 
-An independently implemented, free Foundry v12+ matrix puzzle using the linked reference module's **house-rule DV presets and Interface formulas**, extended with original DV 16/18/20 presets, not official Cyberpunk RED Netrunning. High DVs use twelve symbols, distinct individually solvable objectives and misleading first-code entries; all objectives are no longer guaranteed to fit one buffer. At DV20 / rank 0, only one of the three objectives can fit the four-slot buffer. The GM uses a terminal button to select DV, up to three named objectives and a participant; the character's Netrunner role supplies the editable rank. The assigned player's board opens automatically and starts its timer immediately, even without moves. Completed runs send a partial/full result through core chat without a send button. The dark-red/light-gray/black hack monitor includes always-on subtle scanlines and noise, respects reduced motion and never flashes the board. Failures stay visible and turn the jack-out action into a transmission retry. No actor or world data is modified.
+An independently implemented, free Foundry v12+ matrix puzzle using the linked reference module's **house-rule DV presets and Interface formulas**, extended with original DV 16/18/20 presets, not official Cyberpunk RED Netrunning. High DVs use twelve symbols, distinct individually solvable objectives and misleading first-code entries; all objectives are no longer guaranteed to fit one buffer. At DV20 / rank 0, only one of the three objectives can fit the four-slot buffer. The GM uses a terminal button to select DV, up to three named objectives and a participant; the character's Netrunner role supplies the editable rank. Buffer length is `4 + Math.ceil(rank / 2)`, independent of DV. The assigned player's board opens automatically and starts its timer immediately, even without moves. Completed runs send a partial/full result through core chat without a send button. The red-on-dark protocol terminal places timer/buffer above matrix/upload objectives and includes always-on subtle scanlines and noise. It respects reduced motion and never flashes the board. Both languages share the same engine, DOM components and CSS; browser tests verify desktop/mobile parity. Failures stay visible and turn the jack-out action into a transmission retry. No actor or world data is modified.
 
 Use the [English browser demo](https://dominikgursch.github.io/foundry-cipher-breach/preview/?lang=en) for the shared engine/UI and simulated GM/player flow. Actions provides automated checks and an installable module ZIP artifact. The demo and adapter testdouble are not real Foundry multiplayer verification. All player reports remain untrusted; the GM manually adjudicates every effect.
 

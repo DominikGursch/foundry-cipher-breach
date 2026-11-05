@@ -325,15 +325,99 @@ test("DV20 rank zero decoy fails while a real route reports exactly one achieved
   await expect(page.locator(".cb-status")).toContainText("Buffer full");
 });
 
-test("Foundry RED palette uses dark red, light gray targets and black separators", async ({ page }) => {
+test("red terminal arranges timer and buffer above matrix and upload targets", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/preview/");
   await page.locator("#open").click();
   await page.locator('[name="dv"]').selectOption("20");
   await expect(page.locator(".cb-config")).toContainText("höchstens eines von drei Zielen");
   await page.locator('[type="submit"]').click();
   const color = selector => page.locator(selector).first().evaluate(node => getComputedStyle(node).backgroundColor);
-  expect(await color(".cb-board")).toBe("rgb(180, 0, 0)");
-  expect(await color(".cb-targets li")).toBe("rgb(235, 235, 235)");
-  expect(await color(".cb-board h3")).toBe("rgb(17, 17, 17)");
-  expect(await page.locator(".cb-targets strong").first().evaluate(node => getComputedStyle(node).color)).toBe("rgb(17, 17, 17)");
+  expect(await color(".cb-board")).toBe("rgb(16, 14, 22)");
+  expect(await color(".cb-targets li")).toBe("rgb(25, 18, 27)");
+  expect(await color(".cb-matrix-panel h3")).toBe("rgb(255, 75, 85)");
+  const layout = await page.evaluate(() => {
+    const rect = selector => document.querySelector(selector).getBoundingClientRect();
+    const timer = rect(".cb-telemetry"), buffer = rect(".cb-buffer-panel");
+    const matrix = rect(".cb-matrix-panel"), targets = rect(".cb-objectives");
+    return {
+      topAligned: Math.abs(timer.top - buffer.top) < 1,
+      matrixBelowTimer: matrix.top > timer.bottom,
+      targetsBelowBuffer: targets.top > buffer.bottom,
+      mainAligned: Math.abs(matrix.top - targets.top) < 1,
+      twoColumns: matrix.right < targets.left,
+      timerSameColumn: Math.abs(timer.left - matrix.left) < 1,
+      bufferSameColumn: Math.abs(buffer.left - targets.left) < 1
+    };
+  });
+  expect(Object.values(layout).every(Boolean)).toBe(true);
 });
+
+for (const width of [1280, 390]) {
+  test(`DE and EN share DOM, styles, matrix and gameplay at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.clock.install();
+    const snapshots = [];
+    for (const lang of ["de", "en"]) {
+      await page.goto(`/preview/?lang=${lang}`);
+      await page.locator("#open").click();
+      await page.locator('[name="dv"]').selectOption("20");
+      await page.locator('[name="participant"]').selectOption("demo0");
+      const config = await page.locator(".cb-config").evaluate(node => ({
+        structure: Array.from(node.querySelectorAll("*")).map(child => [child.tagName, child.className]),
+        values: Array.from(node.querySelectorAll('[type="number"], select')).map(child => child.value),
+        styles: ["display", "gridTemplateColumns", "gap", "backgroundColor"].map(key => getComputedStyle(node)[key]),
+        overflow: node.scrollWidth > node.clientWidth
+      }));
+      await page.locator(".cb-close").click();
+      await page.evaluate(async language => {
+        const { generateChallenge, replayResult } = await import("/scripts/engine.mjs");
+        const { breachConfig } = await import("/scripts/mechanics.mjs");
+        const { openBoard } = await import("/scripts/ui.mjs");
+        const strings = (await (await fetch(`/lang/${language}.json`)).json()).CB;
+        let seed = 31;
+        const rng = () => {
+          seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+          return seed / 4294967296;
+        };
+        window.generated = generateChallenge(breachConfig({ dv: 20, rank: 0 }), {
+          rng, names: ["backdoor", "data", "control"].map(key => strings[key])
+        });
+        window.reports = [];
+        openBoard(window.generated.challenge, {
+          t: key => {
+            if (!strings[key]) throw new Error(`Missing ${language} translation: ${key}`);
+            return strings[key];
+          },
+          onSubmit: async data => window.reports.push(replayResult(window.generated.challenge, data))
+        });
+      }, lang);
+      const board = await page.locator(".cb-board").evaluate(node => ({
+        structure: Array.from(node.querySelectorAll("*")).map(child => [child.tagName, child.className]),
+        styles: [".cb-metrics", ".cb-workspace", ".cb-matrix", ".cb-targets", ".cb-telemetry"].map(selector => {
+          const style = getComputedStyle(node.querySelector(selector));
+          return ["display", "gridTemplateColumns", "gap", "backgroundColor", "fontFamily", "fontSize"].map(key => style[key]);
+        }),
+        matrix: Array.from(node.querySelectorAll(".cb-cell")).map(cell => cell.textContent),
+        targets: Array.from(node.querySelectorAll(".cb-sequence")).map(sequence => sequence.textContent),
+        bounds: Array.from(node.querySelectorAll(".cb-metrics, .cb-workspace, .cb-matrix, .cb-objectives")).every(child =>
+          child.scrollWidth <= child.clientWidth),
+        overflow: node.scrollWidth > node.clientWidth
+      }));
+      const solution = await page.evaluate(() => window.generated.solutions[0]);
+      for (const cell of solution) await page.locator(".cb-cell").nth(cell.row * 8 + cell.col).click();
+      await expect.poll(() => page.evaluate(() => window.reports.length)).toBe(1);
+      const result = await page.evaluate(() => {
+        const { moves, matched, outcome } = window.reports[0];
+        return { moves, matched, outcome };
+      });
+      snapshots.push({ config, board, result });
+    }
+    expect(snapshots[0]).toEqual(snapshots[1]);
+    expect(snapshots[0].board.bounds).toBe(true);
+    expect(snapshots[0].board.overflow).toBe(false);
+    expect(snapshots[0].config.overflow).toBe(false);
+    expect(snapshots[0].result.outcome).toBe("full-buffer");
+    expect(snapshots[0].result.matched.filter(Boolean).length).toBe(1);
+  });
+}

@@ -54,11 +54,15 @@ test("EN/DE have identical keys and every statically referenced translation exis
   const en = JSON.parse(await read("lang/en.json")).CB;
   const de = JSON.parse(await read("lang/de.json")).CB;
   assert.deepEqual(Object.keys(en).sort(), Object.keys(de).sort());
-  for (const filename of ["scripts/ui.mjs", "scripts/foundry.mjs"]) {
+  for (const filename of ["scripts/ui.mjs", "scripts/foundry.mjs", "preview/preview.mjs"]) {
     const source = await read(filename);
     for (const match of source.matchAll(/\bt\("([^"]+)"\)/g)) assert.equal(typeof en[match[1]], "string", match[1]);
   }
   for (const status of ["ready", "running", "won", "timeout", "full-buffer", "jacked-out", "dead-end"]) {
     assert.equal(typeof en[status], "string");
+  }
+  for (const [key, value] of Object.entries(en)) {
+    assert.ok(value.trim(), `Empty EN translation: ${key}`);
+    assert.ok(de[key].trim(), `Empty DE translation: ${key}`);
   }
 });

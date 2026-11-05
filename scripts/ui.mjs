@@ -43,11 +43,20 @@ export function openBoard(challenge, { t, onSubmit = null, onError = console.err
   if (config.mode === "netrun") header.append(element("span", {
     className: "cb-board-meta", text: `DV ${config.dv} / Interface ${config.rank}`
   }));
+  header.append(header.querySelector(".cb-close"));
   const status = element("p", { className: "cb-status", attributes: { role: "status", "aria-live": "polite" } });
   const time = element("strong", { className: "cb-time" });
   const timeBar = element("progress", { attributes: { max: config.seconds, value: config.seconds, "aria-label": t("time") } });
-  header.append(element("div", { className: "cb-telemetry" }, [time, timeBar]));
-  header.append(header.querySelector(".cb-close"));
+  const buffer = element("ol", { className: "cb-buffer", attributes: { "aria-label": t("buffer") } });
+  const bufferCount = element("small");
+  root.append(element("div", { className: "cb-metrics" }, [
+    element("section", { className: "cb-telemetry" }, [
+      element("h3", { text: t("time") }), time, timeBar
+    ]),
+    element("section", { className: "cb-buffer-panel" }, [
+      element("h3", {}, [element("span", { text: t("buffer") }), bufferCount]), buffer
+    ])
+  ]));
   const axis = element("p", { className: "cb-axis" });
   const grid = element("div", {
     className: "cb-matrix",
@@ -74,25 +83,25 @@ export function openBoard(challenge, { t, onSubmit = null, onError = console.err
     grid.append(cell);
     return cell;
   }));
-  const buffer = element("ol", { className: "cb-buffer", attributes: { "aria-label": t("buffer") } });
   const targets = element("ol", { className: "cb-targets" });
   const targetNodes = puzzle.challenge.targets.map((sequence, index) => {
     const node = element("li");
     node.append(
       element("div", { className: "cb-sequence" }, sequence.map(code => element("code", { text: code }))),
-      element("strong", { text: puzzle.challenge.names?.[index] ?? `${t("objective")} ${index + 1}` }),
+      element("div", { className: "cb-target-label" }, [
+        element("small", { className: "cb-target-index", text: String(index + 1).padStart(2, "0"), attributes: { "aria-hidden": "true" } }),
+        element("strong", { text: puzzle.challenge.names?.[index] ?? `${t("objective")} ${index + 1}` })
+      ]),
       element("span", { className: "cb-target-status" })
     );
     targets.append(node);
     return node;
   });
-  const bufferCount = element("small");
   const objectives = element("section", { className: "cb-objectives" }, [
-      element("h3", {}, [element("span", { text: t("buffer") }), bufferCount]), buffer,
-      element("h3", { text: t("targets") }), targets
+      element("h3", { text: t("uploadTargets") }), targets
   ]);
   root.append(element("div", { className: "cb-workspace" }, [
-    element("section", {}, [element("h3", { text: t("matrix") }), grid, axis]),
+    element("section", { className: "cb-matrix-panel" }, [element("h3", { text: t("matrix") }), grid, axis]),
     objectives
   ]));
   const errorNode = element("p", { className: "cb-error", attributes: { role: "alert" } });

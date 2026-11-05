@@ -76,6 +76,7 @@
     "effectsOn": "Enable screen effects",
     "floorBreach": "NET / FLOOR BREACH",
     "retryReport": "Retry transmission",
-    "hardHint": "DV 16-20: twelve codes, separate objective routes and misleading entries. Each objective is individually reachable, but not necessarily all in one buffer. At DV20 and Interface 0, at most one of three objectives can be reached."
+    "hardHint": "DV 16-20: twelve codes, separate objective routes and misleading entries. Each objective is individually reachable, but not necessarily all in one buffer. At DV20 and Interface 0, at most one of three objectives can be reached.",
+    "uploadTargets": "Upload target sequences"
   }
 }
