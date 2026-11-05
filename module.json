@@ -1,0 +1,19 @@
+{
+  "id": "foundry-cipher-breach",
+  "title": "Cipher Breach",
+  "description": "An original code-matrix puzzle. Optional home rule for Cyberpunk RED games; not official Netrunning rules.",
+  "version": "0.1.0",
+  "compatibility": { "minimum": "12" },
+  "authors": [{ "name": "DominikGursch" }],
+  "esmodules": ["scripts/foundry.mjs"],
+  "styles": ["styles/cipher-breach.css"],
+  "languages": [
+    { "lang": "en", "name": "English", "path": "lang/en.json" },
+    { "lang": "de", "name": "Deutsch", "path": "lang/de.json" }
+  ],
+  "url": "https://github.com/DominikGursch/foundry-cipher-breach",
+  "manifest": "https://github.com/DominikGursch/foundry-cipher-breach/releases/download/v0.1.0/module.json",
+  "download": "https://github.com/DominikGursch/foundry-cipher-breach/releases/download/v0.1.0/foundry-cipher-breach-v0.1.0.zip",
+  "license": "LICENSE",
+  "readme": "README.md"
+}
