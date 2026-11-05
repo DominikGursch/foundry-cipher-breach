@@ -1,0 +1,10 @@
+import { defineConfig } from "@playwright/test";
+
+export default defineConfig({
+  testDir: "./e2e",
+  use: { baseURL: "http://127.0.0.1:8080", browserName: "chromium" },
+  webServer: {
+    command: "npm run preview", url: "http://127.0.0.1:8080/preview/",
+    reuseExistingServer: !process.env.CI
+  }
+});

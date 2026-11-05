@@ -1,6 +1,8 @@
-import { openConfiguration } from "../scripts/ui.mjs";
+import { element, openConfiguration, openBoard, resultCard } from "../scripts/ui.mjs";
+import { generateChallenge, replayResult } from "../scripts/engine.mjs";
+import { interfaceRank } from "../scripts/mechanics.mjs";
 
-const lang = new URLSearchParams(location.search).get("lang") === "de" ? "de" : "en";
+const lang = new URLSearchParams(location.search).get("lang") === "en" ? "en" : "de";
 document.documentElement.lang = lang;
 const button = document.querySelector("#open");
 const errorNode = document.querySelector("#error");
@@ -14,8 +16,32 @@ try {
     errorNode.textContent = t("error");
   };
   button.textContent = t("menuLabel");
+  document.querySelector("#hint").textContent = t("previewHint");
+  const results = document.querySelector("#results");
+  const users = [4, 7, 0].map(rank => ({
+    id: `demo${rank}`, name: `${t("previewRunner")} / Interface ${rank}`, active: true,
+    rank: interfaceRank({ items: [{ type: "role", name: "Netrunner", system: { rank, mainRoleAbility: "Interface" } }] })
+  }));
+  users.push({ id: "no-role", name: `${t("previewRunner")} / ${t("missingParticipant")}`, rank: null, active: true });
   button.disabled = false;
-  button.addEventListener("click", () => openConfiguration({ t, onError }));
+  button.addEventListener("click", () => openConfiguration({
+    t, onError, isGM: true, users,
+    onLaunch: async (config, participantId, publicResult, names) => {
+      const { challenge } = generateChallenge(config, { id: `demo-${Date.now()}`, participantId, names });
+      results.replaceChildren(
+        element("h2", { text: t("previewResult") }),
+        element("p", { text: `${users.find(user => user.id === participantId).name} / ${t(publicResult ? "public" : "private")}` }),
+        element("p", { text: t("previewLaunched") })
+      );
+      openBoard(challenge, {
+        t, onError,
+        onSubmit: async data => {
+          const result = replayResult(challenge, data);
+          results.append(resultCard(challenge, result, { t }), element("p", { text: t("untrusted") }));
+        }
+      });
+    }
+  }));
 } catch (error) {
   console.error(error);
   errorNode.textContent = "Could not load preview. Serve the repository over HTTP; file:// is not supported.";

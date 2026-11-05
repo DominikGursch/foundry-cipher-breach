@@ -1,6 +1,6 @@
 .cipher-breach {
-  --cb-bg: #122026;
-  --cb-panel: #1c3037;
+  --cb-bg: #09151b;
+  --cb-panel: #13272f;
   --cb-ink: #e5eeec;
   --cb-muted: #b2c4c6;
   --cb-accent: #79ded1;
@@ -10,20 +10,21 @@
   color: var(--cb-ink);
   background: var(--cb-bg);
   border: 1px solid #64918e;
-  border-radius: 12px;
-  padding: 24px;
-  width: min(840px, calc(100vw - 32px));
+  border-radius: 2px;
+  padding: 20px;
+  width: min(940px, calc(100vw - 32px));
   max-height: calc(100vh - 32px);
   overflow: auto;
-  font: 15px/1.5 system-ui, sans-serif;
-  box-shadow: 0 24px 80px #0009;
+  font: 14px/1.5 ui-monospace, Consolas, monospace;
+  background-image: repeating-linear-gradient(0deg, #79ded105 0 1px, transparent 1px 5px);
+  box-shadow: 0 24px 80px #000b, inset 0 0 35px #79ded10a;
 }
 .cipher-breach::backdrop { background: #051218b8; }
 .cipher-breach *, .cipher-breach *::before, .cipher-breach *::after { box-sizing: border-box; }
-.cipher-breach header { display: flex; align-items: center; gap: 16px; }
+.cipher-breach header { display: flex; align-items: center; gap: 16px; padding: 10px 12px; border-left: 4px solid var(--cb-warm); background: var(--cb-panel); }
 .cipher-breach h2, .cipher-breach h3 { font-family: inherit; color: var(--cb-ink); border: 0; }
-.cipher-breach h2 { font-size: 24px; margin: 0; letter-spacing: .03em; flex: 1; }
-.cipher-breach h3 { font-size: 14px; text-transform: uppercase; letter-spacing: .08em; margin: 0 0 12px; }
+.cipher-breach h2 { font-size: 20px; margin: 0; letter-spacing: .1em; flex: 1; text-transform: uppercase; }
+.cipher-breach h3 { font-size: 14px; text-transform: uppercase; letter-spacing: .12em; margin: 0 0 12px; color: var(--cb-warm); }
 .cipher-breach p { margin: 12px 0; }
 .cipher-breach .cb-wordmark { color: var(--cb-accent); font: 13px ui-monospace, monospace; }
 .cipher-breach .cb-eyebrow, .cipher-breach .cb-note { color: var(--cb-muted); font-size: 13px; }
@@ -32,11 +33,13 @@
   display: flex; justify-content: space-between; align-items: center; padding: 10px 0; margin: 20px 0;
 }
 .cipher-breach .cb-time { color: var(--cb-warm); font: bold 26px ui-monospace, monospace; }
+.cipher-breach progress { width: 140px; height: 10px; accent-color: var(--cb-accent); }
+.cipher-breach .cb-metadata { color: var(--cb-accent); padding: 8px 0; border-bottom: 1px solid #46616a; }
 .cipher-breach .cb-workspace { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 28px; }
-.cipher-breach .cb-matrix { display: grid; grid-template-columns: repeat(var(--cb-size), minmax(0, 1fr)); gap: 5px; }
+.cipher-breach .cb-matrix { display: grid; grid-template-columns: repeat(var(--cb-size), minmax(0, 1fr)); gap: 5px; padding: 10px; border: 1px solid #46616a; background: #0005; }
 .cipher-breach button {
   font: inherit; cursor: pointer; color: var(--cb-ink); background: var(--cb-panel);
-  border: 1px solid #75969e; border-radius: 6px; padding: 8px 12px;
+  border: 1px solid #75969e; border-radius: 2px; padding: 8px 12px;
   box-shadow: none; width: auto; line-height: 1.4; margin: 0;
 }
 .cipher-breach button:hover:not(:disabled) { background: #2a4b51; border-color: var(--cb-accent); }
@@ -44,19 +47,29 @@
   outline: 3px solid var(--cb-warm); outline-offset: 3px;
 }
 .cipher-breach button:disabled { opacity: .46; cursor: not-allowed; }
-.cipher-breach .cb-cell { font: bold 16px ui-monospace, monospace; min-height: 40px; padding: 4px; color: var(--cb-accent); }
-.cipher-breach .cb-cell.cb-visited { text-decoration: line-through; color: var(--cb-warm); opacity: .8; }
+.cipher-breach .cb-cell { font: bold 18px ui-monospace, monospace; aspect-ratio: 1.15; min-height: 40px; padding: 4px; color: var(--cb-muted); background: transparent; border-color: transparent; }
+.cipher-breach .cb-cell.cb-active { color: var(--cb-ink); background: #79ded117; border-color: #79ded17a; }
+.cipher-breach .cb-cell.cb-active:hover { background: var(--cb-accent); color: var(--cb-bg); box-shadow: 0 0 14px #79ded144; }
+.cipher-breach .cb-cell.cb-visited { color: var(--cb-muted); opacity: .35; }
 .cipher-breach .cb-primary { color: #122026; background: var(--cb-accent); font-weight: bold; }
 .cipher-breach .cb-primary:hover:not(:disabled) { color: var(--cb-ink); }
 .cipher-breach .cb-targets { list-style: none; margin: 0 0 24px; padding: 0; }
 .cipher-breach .cb-targets li { padding: 10px; margin-bottom: 8px; background: var(--cb-panel); border-left: 3px solid #75969e; }
-.cipher-breach .cb-targets code { color: var(--cb-ink); background: none; border: 0; font: bold 16px ui-monospace, monospace; }
+.cipher-breach .cb-sequence { display: flex; gap: 4px; margin-bottom: 6px; }
+.cipher-breach .cb-targets code { color: var(--cb-muted); background: none; border: 1px solid #46616a; padding: 3px 5px; font: bold 16px ui-monospace, monospace; }
+.cipher-breach .cb-targets code.cb-next { color: var(--cb-warm); border-color: var(--cb-warm); }
+.cipher-breach .cb-targets code.cb-progress { background: var(--cb-accent); color: var(--cb-bg); }
+.cipher-breach .cb-targets code.cb-highlight { background: var(--cb-warm); color: var(--cb-bg); }
 .cipher-breach .cb-targets span { display: block; color: var(--cb-muted); font-size: 12px; }
 .cipher-breach .cb-targets .cb-matched { border-color: var(--cb-accent); }
-.cipher-breach .cb-buffer { display: flex; flex-wrap: wrap; list-style: none; gap: 6px; margin: 0; padding: 0; }
+.cipher-breach .cb-targets .cb-missed { border-color: #e89b9b; opacity: .7; }
+.cipher-breach .cb-buffer { display: flex; flex-wrap: wrap; list-style: none; gap: 6px; margin: 0 0 24px; padding: 0; }
 .cipher-breach .cb-buffer li { border: 1px dashed #75969e; padding: 7px; min-width: 36px; text-align: center; font-family: ui-monospace, monospace; }
 .cipher-breach .cb-buffer .cb-filled { border-style: solid; color: var(--cb-warm); }
 .cipher-breach .cb-status { color: var(--cb-accent); min-height: 1.5em; }
+.cipher-breach.cb-ended header { border-color: var(--cb-accent); }
+.cipher-breach.cb-failed header { border-color: #e89b9b; }
+.cipher-breach.cb-failed .cb-status { color: #e89b9b; }
 .cipher-breach .cb-error { color: #ffd3b7; }
 .cipher-breach footer { display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px; }
 .cipher-breach .cb-config { display: grid; gap: 12px; }
@@ -68,11 +81,18 @@
 .cipher-breach [hidden] { display: none !important; }
 .cb-chat { border-left: 3px solid #307b73; padding-left: 8px; }
 .cb-chat p { font-size: 12px; }
+.cb-success { color: #358577; }
+.cb-failure { color: #ab3f4b; }
+.cb-report ul { list-style: none; padding: 0; }
+.cipher-breach .cb-success { color: var(--cb-accent); }
+.cipher-breach .cb-failure { color: #e89b9b; }
 @media (max-width: 650px) {
   .cipher-breach { padding: 16px; }
   .cipher-breach .cb-workspace { grid-template-columns: 1fr; gap: 20px; }
   .cipher-breach .cb-wordmark { display: none; }
   .cipher-breach .cb-cell { min-height: 36px; font-size: 14px; }
+  .cipher-breach .cb-telemetry { flex-wrap: wrap; gap: 10px; }
+  .cipher-breach .cb-telemetry > span { flex-basis: 100%; }
 }
 @media (prefers-reduced-motion: reduce) {
   .cipher-breach * { animation: none !important; transition: none !important; }

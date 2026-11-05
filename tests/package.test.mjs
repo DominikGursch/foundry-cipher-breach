@@ -58,7 +58,7 @@ test("EN/DE have identical keys and every statically referenced translation exis
     const source = await read(filename);
     for (const match of source.matchAll(/\bt\("([^"]+)"\)/g)) assert.equal(typeof en[match[1]], "string", match[1]);
   }
-  for (const status of ["ready", "running", "won", "timeout", "full-buffer", "jacked-out"]) {
+  for (const status of ["ready", "running", "won", "timeout", "full-buffer", "jacked-out", "dead-end"]) {
     assert.equal(typeof en[status], "string");
   }
 });

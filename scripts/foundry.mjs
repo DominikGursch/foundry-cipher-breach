@@ -1,5 +1,6 @@
 import { generateChallenge, replayResult, validateChallenge } from "./engine.mjs";
-import { element, openBoard, openConfiguration, openReview } from "./ui.mjs";
+import { breachConfig, interfaceRank } from "./mechanics.mjs";
+import { element, openBoard, openConfiguration, openReview, resultCard } from "./ui.mjs";
 
 const ID = "foundry-cipher-breach";
 const t = key => game.i18n.localize(`CB.${key}`);
@@ -18,15 +19,15 @@ function challengeFrom(message) {
   return validateChallenge(message.getFlag(ID, "challenge"));
 }
 
-async function launch(config, participantId, publicResult) {
+async function launch(config, participantId, publicResult, names) {
   if (!game.user.isGM) throw new Error("Only a GM can share a challenge.");
   const participant = game.users.get(participantId);
   if (!participant) throw new Error("Participant no longer exists.");
-  const { challenge } = generateChallenge(config, { id: foundry.utils.randomID(), participantId });
+  const { challenge } = generateChallenge(config, { id: foundry.utils.randomID(), participantId, names });
   const whisper = publicResult ? [] : [...new Set([
     participantId, ...game.users.filter(user => user.isGM).map(user => user.id)
   ])];
-  await ChatMessage.create({
+  return ChatMessage.create({
     user: game.user.id,
     content: note("challengeCard"),
     whisper,
@@ -37,9 +38,48 @@ async function launch(config, participantId, publicResult) {
 function open() {
   return openConfiguration({
     t, isGM: game.user.isGM,
-    users: game.users.contents.map(user => ({ id: user.id, name: user.name })),
+    users: game.user.isGM ? game.users.contents.filter(user => !user.isGM).map(user => ({
+      id: user.id, name: `${user.name}${user.character ? ` / ${user.character.name}` : ""}`,
+      active: user.active, rank: interfaceRank(user.character)
+    })) : [],
     onLaunch: launch, onError: report
   });
+}
+
+async function start({ user, dv = 8, rank, targetCount, names, publicResult = false } = {}) {
+  if (!game.user.isGM) throw new Error("Only a GM can launch a breach.");
+  const participant = game.users.get(user);
+  if (!participant) throw new Error("Select an existing participant.");
+  const actorRank = rank ?? interfaceRank(participant.character);
+  if (actorRank === null) throw new Error("No Interface role found; specify rank explicitly.");
+  return launch(breachConfig({ dv, rank: actorRank, targetCount }), participant.id, publicResult,
+    names ?? ["backdoor", "data", "control"].slice(0, targetCount ?? (dv === 6 ? 2 : 3)).map(t));
+}
+
+const boards = new Map();
+function play(messageId) {
+  const current = game.messages.get(messageId);
+  const live = challengeFrom(current);
+  if (live.participantId !== game.user.id) throw new Error("Challenge participant changed.");
+  if (boards.has(messageId)) return boards.get(messageId);
+  const board = openBoard(live, {
+    t, onError: report,
+    onSubmit: async data => {
+      const source = game.messages.get(messageId);
+      const canonical = challengeFrom(source);
+      if (canonical.participantId !== game.user.id) throw new Error("Participant mismatch.");
+      replayResult(canonical, data);
+      await ChatMessage.create({
+        user: game.user.id,
+        content: note("resultCard"),
+        whisper: [...source.whisper.map(user => typeof user === "string" ? user : user.id)],
+        flags: { [ID]: { result: { challengeMessageId: source.id, data } } }
+      });
+    }
+  });
+  boards.set(messageId, board);
+  board.addEventListener("close", () => boards.delete(messageId), { once: true });
+  return board;
 }
 
 function chatButton(label, action) {
@@ -55,7 +95,10 @@ function chatButton(label, action) {
 Hooks.once("init", () => {
   // A v12 FormApplication menu is just an entry point; all puzzle DOM is created safely.
   class CipherBreachMenu extends FormApplication {
-    render() { open(); return this; }
+    render() {
+      try { open(); } catch (error) { report(error); }
+      return this;
+    }
   }
   game.settings.registerMenu(ID, "launcher", {
     name: "CB.menuName", label: "CB.menuLabel", hint: "CB.menuHint",
@@ -64,10 +107,30 @@ Hooks.once("init", () => {
 });
 
 Hooks.once("ready", () => {
-  game.modules.get(ID).api = Object.freeze({ open });
+  game.modules.get(ID).api = Object.freeze({ open, start });
 });
 
-Hooks.on("renderChatMessage", (message, html) => {
+Hooks.on("getSceneControlButtons", controls => {
+  if (!game.user.isGM) return;
+  const tool = {
+    name: "cipherBreach", title: t("menuLabel"), icon: "fas fa-terminal",
+    button: true, visible: true,
+    onClick: () => { try { open(); } catch (error) { report(error); } }
+  };
+  if (Array.isArray(controls)) controls.find(control => control.name === "token")?.tools.push(tool);
+  else if (controls?.tokens?.tools) controls.tokens.tools.cipherBreach = { ...tool, onChange: tool.onClick, order: 99 };
+});
+
+// A core GM-owned document is the invitation; no unauthenticated custom socket commands.
+Hooks.on("createChatMessage", message => {
+  if (!message.visible || !message.getFlag(ID, "challenge")) return;
+  try {
+    const challenge = challengeFrom(message);
+    if (challenge.participantId === game.user.id) play(message.id);
+  } catch (error) { report(error); }
+});
+
+function renderChat(message, html) {
   const root = html?.[0] ?? html;
   if (!root?.querySelector || !message.visible) return;
   root.querySelector(".cb-chat")?.remove();
@@ -80,27 +143,7 @@ Hooks.on("renderChatMessage", (message, html) => {
       const challenge = challengeFrom(message);
       container.append(element("p", { text: t("untrusted") }));
       if (challenge.participantId === game.user.id) {
-        container.append(chatButton("play", () => {
-          // Read the live GM-owned source again, not a stale rendered copy.
-          const current = game.messages.get(message.id);
-          const live = challengeFrom(current);
-          if (live.participantId !== game.user.id) throw new Error("Challenge participant changed.");
-          openBoard(live, {
-            t, onError: report,
-            onSubmit: async data => {
-              const source = game.messages.get(message.id);
-              const canonical = challengeFrom(source);
-              if (canonical.participantId !== game.user.id) throw new Error("Participant mismatch.");
-              replayResult(canonical, data);
-              await ChatMessage.create({
-                user: game.user.id,
-                content: note("resultCard"),
-                whisper: [...source.whisper.map(user => typeof user === "string" ? user : user.id)],
-                flags: { [ID]: { result: { challengeMessageId: source.id, data } } }
-              });
-            }
-          });
-        }));
+        container.append(chatButton("play", () => play(message.id)));
       }
       if (game.user.isGM) {
         container.append(element("p", {
@@ -108,9 +151,9 @@ Hooks.on("renderChatMessage", (message, html) => {
         }));
       }
     }
-    if (resultFlag && game.user.isGM) {
+    if (resultFlag) {
       container.append(element("p", { text: t("untrusted") }));
-      container.append(chatButton("review", () => {
+      const review = () => {
         if (typeof resultFlag.challengeMessageId !== "string" ||
             !/^[A-Za-z0-9_-]{1,64}$/.test(resultFlag.challengeMessageId)) {
           throw new Error("Invalid source document ID.");
@@ -118,13 +161,19 @@ Hooks.on("renderChatMessage", (message, html) => {
         const source = game.messages.get(resultFlag.challengeMessageId);
         const challenge = challengeFrom(source);
         if (message.user?.id !== challenge.participantId) throw new Error("Result author does not match participant.");
-        const result = replayResult(challenge, resultFlag.data);
-        openReview(result, { t });
-      }));
+        return { challenge, result: replayResult(challenge, resultFlag.data) };
+      };
+      const checked = review();
+      const participant = game.users.get(checked.challenge.participantId);
+      container.append(element("p", { text: `${t("participant")}: ${participant?.character?.name ?? participant?.name ?? t("missingParticipant")}` }));
+      container.append(resultCard(checked.challenge, checked.result, { t }));
+      if (game.user.isGM) container.append(chatButton("review", () => openReview(review().result, { t })));
     }
   } catch (error) {
     console.warn("Cipher Breach | Invalid chat payload", error);
     container.append(element("p", { text: t("invalidPayload") }));
   }
   (root.querySelector(".message-content") ?? root).append(container);
-});
+}
+Hooks.on("renderChatMessage", renderChat);
+Hooks.on("renderChatMessageHTML", renderChat);

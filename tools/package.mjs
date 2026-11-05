@@ -5,7 +5,7 @@ import path from "node:path";
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
 export const RELEASE_FILES = Object.freeze([
   "module.json", "LICENSE", "NOTICE.md", "README.md",
-  "scripts/engine.mjs", "scripts/ui.mjs", "scripts/foundry.mjs",
+  "scripts/engine.mjs", "scripts/mechanics.mjs", "scripts/ui.mjs", "scripts/foundry.mjs",
   "styles/cipher-breach.css", "lang/en.json", "lang/de.json"
 ]);
 

@@ -12,9 +12,9 @@ Compatibility references are descriptive only. Cipher Breach is not affiliated w
 
 ## Independent implementation policy
 
-The code-matrix behavior is independently implemented from an abstract gameplay brief: alternating row/column selections, a bounded buffer, target sequences and a countdown. This repository does not include, require or redistribute code or assets from other Breach implementations. It does not reproduce an existing game's screen layout, characteristic yellow/red brand system, fonts, art or logos. The teal/amber/neutral control panel, system typography and layout are original.
+The code-matrix behavior is independently implemented: alternating row/column selections, a bounded buffer, target sequences and a countdown. The DV presets, Interface-rank resource formulas and overlapping target placement are informed by the behavior of [samroaleksej-bit/night-city-map, netrun-breach branch](https://github.com/samroaleksej-bit/night-city-map/tree/netrun-breach). These are gameplay mechanics, not official Cyberpunk RED rules. This repository does not include, require or redistribute that implementation's source, styles or assets. Its terminal presentation, teal/amber/neutral palette, system typography and layout are independently authored, not an exact reproduction of an existing game's screen, yellow/red brand system, fonts, art or logos.
 
-No RTG or CDPR rules, statblocks, official DLC, character art or logos are distributed. The puzzle configuration is an optional home rule, not official Cyberpunk RED Netrunning and not a rules replacement. Official Interface rank, rolls, abilities and consequences remain outside the module.
+No RTG or CDPR rules, statblocks, official DLC, character art or logos are distributed. The puzzle configuration is an optional home rule, not official Cyberpunk RED Netrunning and not a rules replacement. The module reads a character's existing Interface rank for this optional puzzle but never modifies it. Official rolls, abilities and consequences remain outside the module.
 
 Review applicable third-party policies independently before distributing modifications:
 

@@ -2,7 +2,7 @@ export const SYMBOLS = Object.freeze(["0A", "1C", "2E", "3F", "4B", "5D"]);
 export const DEFAULT_CONFIG = Object.freeze({
   size: 5, buffer: 8, targetCount: 2, sequenceLength: 3, seconds: 60
 });
-const TERMINAL = new Set(["won", "timeout", "full-buffer", "jacked-out"]);
+const TERMINAL = new Set(["won", "timeout", "full-buffer", "jacked-out", "dead-end"]);
 
 function record(value, label) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -27,6 +27,22 @@ function identifier(value, label) {
 
 export function validateConfig(input) {
   record(input, "configuration");
+  if (input.mode === "netrun") {
+    integer(input.dv, 6, 14, "DV");
+    integer(input.rank, 0, 10, "Interface rank");
+    integer(input.targetCount, 1, 3, "Target count");
+    const config = breachConfig(input);
+    for (const key of ["size", "buffer", "seconds"]) {
+      if (input[key] !== config[key]) throw new Error(`Inconsistent ${key}.`);
+    }
+    if (!Array.isArray(input.sequenceLengths) ||
+        input.sequenceLengths.length !== config.targetCount ||
+        Array.from(input.sequenceLengths).some((length, index) => length !== config.sequenceLengths[index])) {
+      throw new Error("Inconsistent sequence lengths.");
+    }
+    return config;
+  }
+  if (input.mode !== undefined) throw new Error("Unsupported configuration mode.");
   const config = {
     size: integer(input.size, 4, 8, "Matrix size"),
     buffer: integer(input.buffer, 4, 14, "Buffer"),
@@ -42,8 +58,9 @@ export function validateConfig(input) {
 
 export function validateChallenge(input) {
   record(input, "challenge");
-  if (input.schema !== 1) throw new Error("Unsupported challenge schema.");
+  if (![1, 2].includes(input.schema)) throw new Error("Unsupported challenge schema.");
   const config = validateConfig(input.config);
+  if ((input.schema === 2) !== (config.mode === "netrun")) throw new Error("Challenge schema/config mismatch.");
   if (!Array.isArray(input.matrix) || input.matrix.length !== config.size) {
     throw new Error("Invalid matrix.");
   }
@@ -55,17 +72,25 @@ export function validateChallenge(input) {
   if (!Array.isArray(input.targets) || input.targets.length !== config.targetCount) {
     throw new Error("Invalid targets.");
   }
-  const targets = Array.from(input.targets, sequence => {
-    if (!Array.isArray(sequence) || sequence.length !== config.sequenceLength ||
+  const targets = Array.from(input.targets, (sequence, index) => {
+    if (!Array.isArray(sequence) || sequence.length !== (config.sequenceLengths?.[index] ?? config.sequenceLength) ||
         Array.from(sequence).some(symbol => !SYMBOLS.includes(symbol))) throw new Error("Invalid target.");
     return [...sequence];
   });
-  return {
-    schema: 1,
+  const normalized = {
+    schema: input.schema,
     id: identifier(input.id, "challenge ID"),
     participantId: input.participantId === null ? null : identifier(input.participantId, "participant ID"),
     config, matrix, targets
   };
+  if (input.schema === 2) {
+    if (!Array.isArray(input.names) || input.names.length !== config.targetCount ||
+        Array.from(input.names).some(name => typeof name !== "string" || !name.trim() || name.length > 120)) {
+      throw new Error("Invalid objective names.");
+    }
+    normalized.names = input.names.map(name => name.trim());
+  }
+  return normalized;
 }
 
 function randomIndex(length, rng) {
@@ -97,7 +122,7 @@ export function legalCells(size, moves) {
 }
 
 export function generateChallenge(configInput = DEFAULT_CONFIG, {
-  rng = Math.random, id = "local", participantId = null
+  rng = Math.random, id = "local", participantId = null, names
 } = {}) {
   const config = validateConfig(configInput);
   const matrix = Array.from({ length: config.size }, () =>
@@ -115,9 +140,19 @@ export function generateChallenge(configInput = DEFAULT_CONFIG, {
   }
   if (!extend()) throw new Error("Could not construct a legal puzzle path.");
   const codes = solution.map(({ row, col }) => matrix[row][col]);
-  const targets = Array.from({ length: config.targetCount }, (_, index) =>
-    codes.slice(index * config.sequenceLength, (index + 1) * config.sequenceLength));
-  const challenge = validateChallenge({ schema: 1, id, participantId, config, matrix, targets });
+  const lengths = config.sequenceLengths ?? Array(config.targetCount).fill(config.sequenceLength);
+  const total = lengths.reduce((sum, length) => sum + length, 0);
+  let offset = 0;
+  const targets = lengths.map((length, index) => {
+    const start = total <= config.buffer ? offset :
+      Math.round(index * (config.buffer - length) / Math.max(1, config.targetCount - 1));
+    offset += length;
+    return codes.slice(start, start + length);
+  });
+  const challenge = validateChallenge({
+    schema: config.mode === "netrun" ? 2 : 1, id, participantId, config, matrix, targets,
+    names: names ?? lengths.map((_, index) => `Objective ${index + 1}`)
+  });
   return { challenge, solution: solution.map(cell => ({ ...cell })) };
 }
 
@@ -198,6 +233,7 @@ export class Puzzle {
       codes.some((_, index) => sequence.every((symbol, offset) => codes[index + offset] === symbol)));
     if (this.matched.every(Boolean)) this.finish("won", elapsed);
     else if (this.moves.length === this.challenge.config.buffer) this.finish("full-buffer", elapsed);
+    else if (!legalCells(this.challenge.config.size, this.moves).length) this.finish("dead-end", elapsed);
     return this.status;
   }
 
@@ -243,3 +279,4 @@ export function replayResult(challengeInput, resultInput) {
   if (puzzle.status !== result.outcome) throw new Error("Outcome does not match legal move history.");
   return { ...result, matched: [...puzzle.matched], timingVerified: false };
 }
+import { breachConfig } from "./mechanics.mjs";

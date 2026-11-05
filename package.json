@@ -5,8 +5,11 @@
   "type": "module",
   "scripts": {
     "test": "node --test",
+    "test:browser": "playwright test",
+    "preview": "node tools/serve.mjs",
     "package": "node tools/package.mjs"
   },
+  "devDependencies": { "@playwright/test": "^1.56.1" },
   "engines": { "node": ">=20" },
   "license": "MIT"
 }
