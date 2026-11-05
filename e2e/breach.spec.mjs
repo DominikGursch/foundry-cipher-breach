@@ -45,7 +45,7 @@ test("countdown starts on opening, includes time before the first code and repor
   await expect(page.locator(".cb-status")).toContainText("Zeitlimit erreicht");
   await expect(page.locator("#results .cb-report")).toHaveCount(1);
   await expect(page.locator("#results .cb-report")).toContainText("0/3");
-  await expect(page.locator(".cb-board .cb-primary")).toHaveText("Ergebnis gesendet");
+  await expect(page.locator(".cb-jack")).toBeDisabled();
   await page.clock.runFor(2000);
   await expect(page.locator("#results .cb-report")).toHaveCount(1);
 });
@@ -103,11 +103,12 @@ test("report failures remain visible and can be retried without automatic resend
   });
   await page.getByRole("button", { name: "Jack out", exact: true }).click();
   await expect(page.locator(".cb-error")).toContainText("could not complete");
-  await expect(page.locator(".cb-primary")).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Retry transmission" })).toBeEnabled();
   await page.clock.runFor(1000);
   expect(await page.evaluate(() => window.attempts)).toBe(1);
-  await page.locator(".cb-primary").click();
-  await expect(page.locator(".cb-primary")).toHaveText("Result sent");
+  await page.getByRole("button", { name: "Retry transmission" }).click();
+  await expect(page.locator(".cb-jack")).toBeDisabled();
+  await expect(page.locator(".cb-error")).toBeEmpty();
   expect(await page.evaluate(() => window.attempts)).toBe(2);
   expect(await page.evaluate(() => window.errors)).toEqual(["Chat permission denied"]);
 });
@@ -199,7 +200,7 @@ test("Foundry adapter restricts launch and interaction and uses core chat for au
   });
   await expect(page.locator(".cb-board")).toHaveCount(1);
   await page.getByRole("button", { name: "Jack out", exact: true }).click();
-  await expect(page.locator(".cb-primary")).toHaveText("Result sent");
+  await expect.poll(() => page.evaluate(() => game.messages.size)).toBe(2);
   const report = await page.evaluate(() => {
     const message = [...game.messages.values()].at(-1);
     const root = document.createElement("div");
@@ -261,28 +262,28 @@ test("DV 16-20 are available and no-move timeout is automatically reported", asy
   await expect(page.locator("#results .cb-report")).toContainText("Zeitlimit erreicht");
   await expect(page.locator("#results .cb-report")).toContainText("Puffer 0/4");
   await expect(page.locator("#results .cb-report")).toHaveCount(1);
-  await expect(page.locator(".cb-link")).toHaveText("NEURALE VERBINDUNG GETRENNT");
+  await expect(page.locator(".cb-jack")).toBeDisabled();
 });
 
-test("deep-dive effects can be disabled and reduced-motion suppresses all animations", async ({ page }) => {
+test("compact hack monitor omits helper controls and keeps noise active, respecting reduced motion", async ({ page }) => {
   await page.clock.install();
   await page.goto("/preview/?lang=en");
   await page.locator("#open").click();
   await page.locator('[type="submit"]').click();
   const board = page.locator(".cb-board");
-  const animation = () => board.evaluate(node => getComputedStyle(node, "::after").animationName);
-  await expect(board).toHaveClass(/cb-immersive/);
+  const animation = () => page.locator(".cb-matrix").evaluate(node => getComputedStyle(node, "::after").animationName);
+  await expect(board.locator("button:not(.cb-cell)")).toHaveCount(2);
+  await expect(board.locator(".cb-effects, .cb-primary, details, .cb-note, .cb-eyebrow")).toHaveCount(0);
+  await expect(board).not.toContainText("Optional home rule");
+  await expect(page.locator(".cb-status")).toBeHidden();
+  await expect(page.locator(".cb-time")).toHaveText("39.0s");
   expect(await animation()).toBe("cb-interference");
-  await page.getByRole("button", { name: "Disable screen effects" }).click();
-  await expect(board).not.toHaveClass(/cb-immersive/);
-  expect(await animation()).toBe("none");
-  await expect(page.getByRole("button", { name: "Enable screen effects" })).toHaveAttribute("aria-pressed", "false");
-  await page.getByRole("button", { name: "Enable screen effects" }).click();
+  expect(await page.locator(".cb-matrix").evaluate(node => getComputedStyle(node, "::before").animationName)).toBe("cb-noise");
   await page.emulateMedia({ reducedMotion: "reduce" });
   expect(await animation()).toBe("none");
-  expect(await page.locator(".cb-link").evaluate(node => getComputedStyle(node).animationName)).toBe("none");
+  expect(await page.locator(".cb-matrix").evaluate(node => getComputedStyle(node, "::before").animationName)).toBe("none");
   await page.clock.runFor(39000);
   await expect(board).toHaveClass(/cb-ended/);
   await page.emulateMedia({ reducedMotion: "no-preference" });
-  expect(await animation()).toBe("none");
+  expect(await animation()).toBe("cb-interference");
 });

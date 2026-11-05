@@ -51,15 +51,15 @@ Die SL sendet eine GM-eigene Chat-Einladung. Beim zugewiesenen Online-Spieler ö
 - Der Countdown beginnt **beim Öffnen des Spielfelds**, bewusst früher als in der Referenz. Abwarten zählt zur Laufzeit; ohne Zug endet der Breach ebenfalls bei Zeitablauf und wird gemeldet.
 - Ziele werden durch zusammenhängende Codes im Puffer erreicht, in beliebiger Reihenfolge; Sequenzen dürfen überlappen. Präfixfortschritt und passende nächste Codes werden hervorgehoben.
 - Ende bei allen erreichten Zielen, vollem Puffer, Zeitablauf, Sackgasse oder Ausstöpseln. Teilerfolge bleiben erhalten; alle Ziele auf dem letzten Pufferplatz zählen als voller Erfolg.
-- Beendete zugewiesene Läufe senden automatisch eine Ergebnisnachricht. Bei Sendefehlern erscheinen Fehler und ein Wiederholungs-Knopf. Schließen eines unfertigen Laufs verwirft ihn.
+- Beendete zugewiesene Läufe senden automatisch eine Ergebnisnachricht, ohne Senden-Knopf im Spielfeld. Nur bei einem Sendefehler erscheint der Fehler und der Ausstöpseln-Knopf wird zu **Übertragung wiederholen**. Schließen eines unfertigen Laufs verwirft ihn.
 
 Privater Chat geht an Teilnehmer und alle SLs, öffentlicher an alle. Die Chat-Karte zeigt Rang, DV, Zeitangabe, Pufferverbrauch und jedes Ziel. Ohne erreichtes Ziel erscheint der ICE-Hinweis; **die SL bestimmt sämtliche Folgen manuell**. Lokales Üben versendet keine Chat-Nachrichten.
 
 ## Deep-Dive-Oberfläche
 
-Eigenständig gestaltetes Rot-/Schwarz-/Weiß-Terminal mit kantigen Panels, neuralem Verbindungsstatus, Scanlines und dezenten langsamen Bildschirmstörungen. Die Effekte verändern nur eine schwach transparente Ebene und die Statuszeile; Matrix und Bedienelemente bleiben ruhig und lesbar. Keine schnellen Lichtblitze oder Vollbild-Helligkeitswechsel. Unter zehn Sekunden wird die Zeit statisch rot markiert.
+Eigenständig gestaltetes Rot-/Schwarz-/Weiß-Terminal: kompakte Kopfzeile mit DV, Interface und Countdown; links die Code-Matrix als Monitor, rechts Puffer, Ziele und Ausstöpseln. Keine Hausregelhinweise, Spielanleitung, Effekt-Schalter oder Senden-Knöpfe im Spielfeld. Lizenz- und Vertrauensinformationen bleiben in Dokumentation und Chat erhalten.
 
-**Bildschirmeffekte aus** schaltet die Effekte für das aktuelle Spielfenster ab. Die Systemeinstellung **Bewegung reduzieren / prefers-reduced-motion** deaktiviert alle Animationen automatisch. Beim Ende des Breachs stoppen die Animationen ebenfalls. Es werden keine offiziellen Layouts, Logos, Fonts oder Grafiken kopiert.
+Scanlines, schwaches Bildrauschen und eine langsame Monitorstörung sind immer aktiv, auch im Ergebnisbild. Sie verändern nur transparente Ebenen über der Matrix; Codes und Bedienelemente bewegen sich nicht. Keine schnellen Lichtblitze oder Vollbild-Helligkeitswechsel. Die Systemeinstellung **Bewegung reduzieren / prefers-reduced-motion** unterdrückt die Animationen weiterhin und behält die statische Monitorstruktur. Es werden keine offiziellen Layouts, Logos, Fonts oder Grafiken kopiert.
 
 ## Mechanik der Referenz
 
@@ -139,7 +139,7 @@ gh release create v0.1.0 dist/module.json dist/foundry-cipher-breach-v0.1.0.zip 
 
 ## English
 
-An independently implemented, free Foundry v12+ matrix puzzle using the linked reference module's **house-rule DV presets and Interface formulas**, extended with original DV 16/18/20 presets, not official Cyberpunk RED Netrunning. The GM uses a terminal button to select DV, up to three named objectives and a participant; the character's Netrunner role supplies the editable rank. The assigned player's board opens automatically and starts its timer immediately, even without moves. Completed runs send a partial/full result through core chat. The red/black/white deep-dive terminal includes subtle optional scanline interference, respects reduced motion and never flashes the board. Failures stay visible and can be retried. No actor or world data is modified.
+An independently implemented, free Foundry v12+ matrix puzzle using the linked reference module's **house-rule DV presets and Interface formulas**, extended with original DV 16/18/20 presets, not official Cyberpunk RED Netrunning. The GM uses a terminal button to select DV, up to three named objectives and a participant; the character's Netrunner role supplies the editable rank. The assigned player's board opens automatically and starts its timer immediately, even without moves. Completed runs send a partial/full result through core chat without a send button. The compact red/black/white hack monitor includes always-on subtle scanlines and noise, respects reduced motion and never flashes the board. Failures stay visible and turn the jack-out action into a transmission retry. No actor or world data is modified.
 
 Use the [English browser demo](https://dominikgursch.github.io/foundry-cipher-breach/preview/?lang=en) for the shared engine/UI and simulated GM/player flow. Actions provides automated checks and an installable module ZIP artifact. The demo and adapter testdouble are not real Foundry multiplayer verification. All player reports remain untrusted; the GM manually adjudicates every effect.
 

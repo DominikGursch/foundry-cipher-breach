@@ -35,25 +35,20 @@ function dialog(title, t) {
 export function openBoard(challenge, { t, onSubmit = null, onError = console.error } = {}) {
   const puzzle = new Puzzle(challenge);
   const root = dialog("Cipher Breach", t);
-  root.classList.add("cb-board", "cb-immersive");
-  const effects = button(t("effectsOff"), () => {
-    const enabled = root.classList.toggle("cb-immersive");
-    effects.textContent = t(enabled ? "effectsOff" : "effectsOn");
-    effects.setAttribute("aria-pressed", String(enabled));
-  }, "cb-effects");
-  effects.setAttribute("aria-pressed", "true");
-  const link = element("span", { className: "cb-link", text: t("deepDive") });
-  root.append(element("div", { className: "cb-uplink" }, [link, effects]));
-  root.append(element("p", { className: "cb-eyebrow", text: t("houseRule") }));
+  root.classList.add("cb-board");
   const config = puzzle.challenge.config;
-  if (config.mode === "netrun") root.append(element("p", {
-    className: "cb-metadata", text: `DV ${config.dv} / Interface ${config.rank} / ${t("buffer")} ${config.buffer}`
+  const header = root.querySelector("header");
+  header.querySelector(".cb-wordmark").remove();
+  header.querySelector("h2").textContent = t("floorBreach");
+  if (config.mode === "netrun") header.append(element("span", {
+    className: "cb-board-meta", text: `DV ${config.dv} / Interface ${config.rank}`
   }));
   const status = element("p", { className: "cb-status", attributes: { role: "status", "aria-live": "polite" } });
   const time = element("strong", { className: "cb-time" });
   const timeBar = element("progress", { attributes: { max: config.seconds, value: config.seconds, "aria-label": t("time") } });
-  const axis = element("span");
-  root.append(element("div", { className: "cb-telemetry" }, [time, timeBar, axis]));
+  header.append(element("div", { className: "cb-telemetry" }, [time, timeBar]));
+  header.append(header.querySelector(".cb-close"));
+  const axis = element("p", { className: "cb-axis" });
   const grid = element("div", {
     className: "cb-matrix",
     attributes: { role: "group", "aria-label": t("matrix"), style: `--cb-size:${puzzle.challenge.config.size}` }
@@ -91,44 +86,43 @@ export function openBoard(challenge, { t, onSubmit = null, onError = console.err
     targets.append(node);
     return node;
   });
-  root.append(element("div", { className: "cb-workspace" }, [
-    element("section", {}, [element("h3", { text: t("matrix") }), grid]),
-    element("section", { className: "cb-objectives" }, [
-      element("h3", { text: `${t("buffer")} / ${config.buffer}` }), buffer,
+  const bufferCount = element("small");
+  const objectives = element("section", { className: "cb-objectives" }, [
+      element("h3", {}, [element("span", { text: t("buffer") }), bufferCount]), buffer,
       element("h3", { text: t("targets") }), targets
-    ])
+  ]);
+  root.append(element("div", { className: "cb-workspace" }, [
+    element("section", {}, [element("h3", { text: t("matrix") }), grid, axis]),
+    objectives
   ]));
   const errorNode = element("p", { className: "cb-error", attributes: { role: "alert" } });
   const jack = button(t("jackOut"), () => {
-    try { puzzle.jackOut(); refresh(); } catch (error) { fail(error); }
-  });
-  const submit = button(t("submit"), () => sendResult(), "cb-primary");
+    if (sendFailed) void sendResult();
+    else {
+      try { puzzle.jackOut(); refresh(); } catch (error) { fail(error); }
+    }
+  }, "cb-jack");
   async function sendResult() {
     if (submitted || submitting) return;
     submitting = true;
+    sendFailed = false;
     errorNode.textContent = "";
-    submit.disabled = true;
+    jack.disabled = true;
     try {
       await onSubmit(puzzle.result());
-      submit.textContent = t("submitted");
       submitted = true;
     } catch (error) {
+      sendFailed = true;
       fail(error);
     } finally {
       submitting = false;
       refresh();
     }
   }
-  submit.hidden = !onSubmit;
-  root.append(status, errorNode, element("footer", {}, [jack, submit]));
-  if (onSubmit) root.append(element("p", { className: "cb-note", text: t("untrusted") }));
-  root.append(element("p", { className: "cb-note", text: t("closeWarning") }));
-  root.append(element("details", {}, [
-    element("summary", { text: t("instructions") }),
-    element("p", { text: t("rules") })
-  ]));
+  objectives.append(status, errorNode, element("footer", {}, [jack]));
   let submitted = false;
   let submitting = false;
+  let sendFailed = false;
   let autoAttempted = false;
   let hovered = null;
   function progress(sequence) {
@@ -157,10 +151,11 @@ export function openBoard(challenge, { t, onSubmit = null, onError = console.err
     axis.textContent = ended ? t("ended") : t(puzzle.moves.length % 2 === 0 ? "activeRow" : "activeColumn");
     const statusText = ended ? `${t(currentStatus)} ${t("targets")}: ${puzzle.matched.filter(Boolean).length}/${puzzle.matched.length}` : t(currentStatus);
     if (status.textContent !== statusText) status.textContent = statusText;
+    status.hidden = !ended;
     root.classList.toggle("cb-ended", ended);
     root.classList.toggle("cb-failed", ended && !puzzle.matched.some(Boolean));
     root.classList.toggle("cb-critical", !ended && remaining <= 10);
-    link.textContent = t(ended ? "linkClosed" : "deepDive");
+    bufferCount.textContent = `${puzzle.moves.length}/${config.buffer}`;
     const legal = new Set(legalCells(puzzle.challenge.config.size, puzzle.moves).map(cell => `${cell.row}:${cell.col}`));
     for (let row = 0; row < cells.length; row++) {
       for (let col = 0; col < cells[row].length; col++) {
@@ -188,11 +183,11 @@ export function openBoard(challenge, { t, onSubmit = null, onError = console.err
         token.classList.toggle("cb-progress", tokenIndex < count);
         token.classList.toggle("cb-next", !ended && !puzzle.matched[index] && tokenIndex === count);
       });
-      node.lastChild.textContent = puzzle.matched[index] ? t("matched") : ended ? t("missed") : t("pending");
+      node.lastChild.textContent = puzzle.matched[index] ? t("matched") : ended ? t("missed") : "";
     });
     highlight(hovered);
-    jack.disabled = ended;
-    submit.disabled = !ended || submitted || submitting;
+    jack.disabled = submitting || (ended && !sendFailed);
+    jack.textContent = t(sendFailed ? "retryReport" : "jackOut");
     if (ended && onSubmit && !autoAttempted) {
       autoAttempted = true;
       void sendResult();
@@ -210,7 +205,6 @@ export function openConfiguration({
   t, users = [], isGM = false, onLaunch = null, onError = console.error
 }) {
   const root = dialog("Cipher Breach", t);
-  root.append(element("p", { text: t("houseRule") }));
   const form = element("form", { className: "cb-config" });
   const dv = element("select", { attributes: { name: "dv" } }, Object.entries(DV_PRESETS).map(([value, preset]) =>
     element("option", { text: `DV ${value} / ${preset.size} x ${preset.size}`, attributes: { value } })));

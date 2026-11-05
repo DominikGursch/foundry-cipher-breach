@@ -39,7 +39,7 @@
     "visibility": "Chat-Sichtbarkeit",
     "private": "SL und Teilnehmer",
     "public": "Alle",
-    "configHint": "Puffer = 4 + halber Interface-Rang, aufgerundet. Zeit = max(15, 25 + 4 x Rang - (DV - 6)) Sekunden. DV bestimmt die Sequenzlängen; Ziele können überlappen. Hausregeln des Referenzmoduls, keine offiziellen RED-Regeln.",
+    "configHint": "Puffer = 4 + halber Interface-Rang, aufgerundet. Zeit = max(15, 25 + 4 x Rang - (DV - 6)) Sekunden. DV bestimmt die Sequenzlängen; Ziele können überlappen.",
     "configError": "Start fehlgeschlagen. Prüfe DV, Interface-Rang (0–10), Zielnamen und Chat-Berechtigungen. Details stehen in der Konsole.",
     "launch": "Rätsel starten",
     "challengeCard": "Cipher Breach: SL-Rätsel. Der zugewiesene Teilnehmer kann unten einen neuen Versuch öffnen.",
@@ -73,6 +73,8 @@
     "deepDive": "DEEP DIVE / NEURALE VERBINDUNG AKTIV",
     "linkClosed": "NEURALE VERBINDUNG GETRENNT",
     "effectsOff": "Bildschirmeffekte aus",
-    "effectsOn": "Bildschirmeffekte an"
+    "effectsOn": "Bildschirmeffekte an",
+    "floorBreach": "NET / FLOOR BREACH",
+    "retryReport": "Übertragung wiederholen"
   }
 }

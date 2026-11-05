@@ -39,7 +39,7 @@
     "visibility": "Chat visibility",
     "private": "GM(s) and participant",
     "public": "Everyone",
-    "configHint": "Buffer = 4 + half the Interface rank rounded up. Time = max(15, 25 + 4 x rank - (DV - 6)) seconds. DV sets sequence lengths; targets may overlap. These are the reference module's house rules, not official RED rules.",
+    "configHint": "Buffer = 4 + half the Interface rank rounded up. Time = max(15, 25 + 4 x rank - (DV - 6)) seconds. DV sets sequence lengths; targets may overlap.",
     "configError": "Unable to launch. Check DV, Interface rank (0-10), objective names and chat permissions. Details are in the console.",
     "launch": "Launch challenge",
     "challengeCard": "Cipher Breach: GM challenge. The assigned participant can open a fresh attempt below.",
@@ -73,6 +73,8 @@
     "deepDive": "DEEP DIVE / NEURAL LINK ACTIVE",
     "linkClosed": "NEURAL LINK DISCONNECTED",
     "effectsOff": "Disable screen effects",
-    "effectsOn": "Enable screen effects"
+    "effectsOn": "Enable screen effects",
+    "floorBreach": "NET / FLOOR BREACH",
+    "retryReport": "Retry transmission"
   }
 }
