@@ -63,6 +63,8 @@ Eigenständig gestaltetes rotes Breach-Terminal auf dunklem Hintergrund: feine R
 
 Scanlines, schwaches Bildrauschen und eine langsame Monitorstörung sind immer aktiv, auch im Ergebnisbild. Sie verändern nur transparente Ebenen über der Matrix; Codes und Bedienelemente bewegen sich nicht. Keine schnellen Lichtblitze oder Vollbild-Helligkeitswechsel. Die Systemeinstellung **Bewegung reduzieren / prefers-reduced-motion** unterdrückt die Animationen weiterhin und behält die statische Monitorstruktur. Es werden keine offiziellen Layouts, Logos, Fonts oder Grafiken kopiert.
 
+Hinter den Panels liegen schwach sichtbare, langsam driftende Zahlen-/Algorithmusfragmente und ein perspektivisches Netzwerk-Raster. Versetzte, unterbrochene Rahmenlinien vermitteln eine virtuelle Datenumgebung. Diese rein dekorativen Ebenen enthalten keine echten Charakter-, Netzwerk- oder Rätseldaten, sind für Screenreader ausgeblendet und fangen keine Eingaben ab. Ihre Bewegung wird bei reduzierter Bewegung ebenfalls unterdrückt.
+
 ## Mechanik der Referenz
 
 | DV | Matrix | Codes pro Ziel |

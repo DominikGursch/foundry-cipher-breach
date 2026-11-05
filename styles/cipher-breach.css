@@ -107,6 +107,45 @@
     repeating-linear-gradient(0deg, #ffffff02 0 1px, transparent 1px 5px);
   box-shadow: 0 24px 80px #000d, inset 0 0 0 5px var(--cb-bg), inset 0 0 0 6px #86374055;
   color-scheme: dark;
+  isolation: isolate;
+}
+.cipher-breach.cb-board > header,
+.cipher-breach.cb-board > .cb-metrics,
+.cipher-breach.cb-board > .cb-workspace { position: relative; z-index: 1; }
+.cipher-breach.cb-board .cb-datafield {
+  position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0;
+  background: radial-gradient(ellipse at 75% 65%, #ff4b5510, transparent 55%);
+}
+.cipher-breach.cb-board .cb-datastream {
+  position: absolute; left: calc(var(--cb-stream) * 15% - 3%); top: calc(var(--cb-stream) * -17px);
+  white-space: pre; color: #ff8791; opacity: .075; font: 10px/2 ui-monospace, monospace;
+  letter-spacing: .12em; filter: blur(.45px); user-select: none;
+  transform: rotate(-3deg); animation: cb-data-drift 32s linear infinite alternate;
+  animation-delay: calc(var(--cb-stream) * -4s);
+}
+.cipher-breach.cb-board .cb-datastream:nth-child(even) { opacity: .045; font-size: 13px; filter: blur(1px); }
+.cipher-breach.cb-board .cb-network {
+  position: absolute; inset: 35% -15% -20%; opacity: .2;
+  background-image: linear-gradient(#ff4b5528 1px, transparent 1px), linear-gradient(90deg, #ff4b5528 1px, transparent 1px);
+  background-size: 66px 44px; transform: perspective(380px) rotateX(48deg) rotateZ(-9deg);
+  mask-image: radial-gradient(ellipse, #000, transparent 70%);
+}
+.cipher-breach.cb-board .cb-frame-traces { position: absolute; inset: 8px 12px 10px 7px; border-left: 1px solid #ff4b5550; border-right: 1px solid #ff4b5525; }
+.cipher-breach.cb-board .cb-frame-traces::before {
+  content: ""; position: absolute; inset: 6px 9px 4px 4px;
+  border: 1px solid #ff4b5533;
+  clip-path: polygon(0 0, 76% 0, 76% 1%, 100% 1%, 100% 47%, 99% 47%, 99% 100%, 14% 100%, 14% 99%, 0 99%);
+}
+.cipher-breach.cb-board .cb-frame-traces::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(var(--cb-accent), var(--cb-accent)) 0 0 / 40px 2px no-repeat,
+    linear-gradient(var(--cb-accent), var(--cb-accent)) 100% 9% / 2px 22px no-repeat,
+    repeating-linear-gradient(90deg, #ff4b5570 0 2px, transparent 2px 5px) 96% 100% / 74px 5px no-repeat,
+    repeating-linear-gradient(0deg, #ff4b5550 0 2px, transparent 2px 8px) 0 83% / 4px 58px no-repeat;
+}
+@keyframes cb-data-drift {
+  from { transform: translateY(-12px) rotate(-3deg); }
+  to { transform: translateY(22px) rotate(-3deg); }
 }
 .cipher-breach.cb-board header {
   gap: 16px; flex-wrap: wrap; padding: 18px 24px;
@@ -133,6 +172,7 @@
 .cipher-breach.cb-board .cb-buffer li { color: var(--cb-muted); background: transparent; border-color: var(--cb-line); min-width: 34px; padding: 4px 6px; }
 .cipher-breach.cb-board .cb-buffer li.cb-filled { color: var(--cb-accent); border-color: var(--cb-accent); background: #ff4b5514; }
 .cipher-breach.cb-board .cb-objectives { display: flex; flex-direction: column; align-self: start; border: 1px solid var(--cb-line); }
+.cipher-breach.cb-board .cb-objectives { background: #100e16b8; border-right-color: #86374055; border-bottom-style: dashed; }
 .cipher-breach.cb-board .cb-objectives > h3 { margin: 0; padding: 12px 16px; border-bottom: 1px solid var(--cb-line); }
 .cipher-breach.cb-board .cb-matrix-panel > h3 { background: var(--cb-accent); color: var(--cb-bg); padding: 10px 12px; margin: 0; }
 .cipher-breach.cb-board .cb-matrix {

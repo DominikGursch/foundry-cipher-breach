@@ -413,6 +413,7 @@ for (const width of [1280, 390]) {
       });
       snapshots.push({ config, board, result });
     }
+
     expect(snapshots[0]).toEqual(snapshots[1]);
     expect(snapshots[0].board.bounds).toBe(true);
     expect(snapshots[0].board.overflow).toBe(false);
@@ -421,3 +422,23 @@ for (const width of [1280, 390]) {
     expect(snapshots[0].result.matched.filter(Boolean).length).toBe(1);
   });
 }
+
+test("virtual data landscape is decorative, bounded and respects reduced motion", async ({ page }) => {
+  await page.goto("/preview/");
+  await page.locator("#open").click();
+  await page.locator('[type="submit"]').click();
+  await expect(page.locator(".cb-datafield")).toHaveAttribute("aria-hidden", "true");
+  await expect(page.locator(".cb-datastream")).toHaveCount(7);
+  await expect(page.locator(".cb-datastream").first()).toContainText("hash[");
+  const decoration = await page.locator(".cb-datafield").evaluate(node => ({
+    events: getComputedStyle(node).pointerEvents,
+    overflow: getComputedStyle(node).overflow,
+    focusable: node.querySelectorAll("button, input, a, [tabindex]").length,
+    animation: getComputedStyle(node.querySelector(".cb-datastream")).animationName
+  }));
+  expect(decoration).toEqual({ events: "none", overflow: "hidden", focusable: 0, animation: "cb-data-drift" });
+  await page.locator(".cb-cell:enabled").first().click();
+  await expect(page.locator(".cb-buffer .cb-filled")).toHaveCount(1);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  expect(await page.locator(".cb-datastream").first().evaluate(node => getComputedStyle(node).animationName)).toBe("none");
+});

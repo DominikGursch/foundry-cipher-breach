@@ -36,6 +36,19 @@ export function openBoard(challenge, { t, onSubmit = null, onError = console.err
   const puzzle = new Puzzle(challenge);
   const root = dialog("Cipher Breach", t);
   root.classList.add("cb-board");
+  const datafield = element("div", { className: "cb-datafield", attributes: { "aria-hidden": "true" } });
+  for (let index = 0; index < 7; index++) {
+    const fragments = Array.from({ length: 22 }, (_, row) => {
+      const address = ((index + 1) * 4099 + row * 137).toString(16).toUpperCase().padStart(6, "0");
+      return `${address}  ${((row * 31 + index * 17) % 256).toString(2).padStart(8, "0")}\n${row % 2 ? "xor" : "hash"}[${address.slice(-3)}] >> ${row % 7}`;
+    }).join("\n");
+    datafield.append(element("span", {
+      className: "cb-datastream", text: fragments,
+      attributes: { style: `--cb-stream:${index}` }
+    }));
+  }
+  datafield.append(element("div", { className: "cb-network" }), element("div", { className: "cb-frame-traces" }));
+  root.prepend(datafield);
   const config = puzzle.challenge.config;
   const header = root.querySelector("header");
   header.querySelector(".cb-wordmark").remove();
