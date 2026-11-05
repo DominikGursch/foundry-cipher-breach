@@ -35,6 +35,11 @@ export function validateConfig(input) {
     integer(input.rank, 0, 10, "Interface rank");
     integer(input.targetCount, 1, 3, "Target count");
     const config = breachConfig({ ...input, balance: input.balance ?? 1 });
+    if (config.balance === 3) {
+      for (const key of ["effectiveDV", "repeatedFailures", "pressureConditions", "enemyRunners"]) {
+        if (input[key] !== config[key]) throw new Error(`Inconsistent ${key}.`);
+      }
+    }
     for (const key of ["size", "buffer", "seconds"]) {
       if (input[key] !== config[key]) throw new Error(`Inconsistent ${key}.`);
     }
@@ -63,7 +68,7 @@ export function validateChallenge(input) {
   record(input, "challenge");
   if (![1, 2].includes(input.schema)) throw new Error("Unsupported challenge schema.");
   const config = validateConfig(input.config);
-  const symbols = config.mode === "netrun" && config.dv >= 16 ? HARD_SYMBOLS : SYMBOLS;
+  const symbols = config.mode === "netrun" && (config.effectiveDV ?? config.dv) >= 16 ? HARD_SYMBOLS : SYMBOLS;
   if ((input.schema === 2) !== (config.mode === "netrun")) throw new Error("Challenge schema/config mismatch.");
   if (!Array.isArray(input.matrix) || input.matrix.length !== config.size) {
     throw new Error("Invalid matrix.");
@@ -151,7 +156,7 @@ function lowInterfaceRoutes(config, rng) {
     Array.from({ length: config.size }, () => noise[randomIndex(noise.length, rng)]));
   const starts = columns.slice(0, config.targetCount);
   const available = columns.slice(config.targetCount);
-  const trapCount = config.targetCount === 1 ? (config.dv === 20 ? 5 : 4) : Math.floor(available.length / config.targetCount);
+  const trapCount = config.targetCount === 1 ? ((config.effectiveDV ?? config.dv) >= 20 ? 5 : 4) : Math.floor(available.length / config.targetCount);
   const solutions = [], decoys = [], decoyPaths = [];
   targets.forEach((sequence, index) => {
     const start = starts[index];
@@ -180,13 +185,15 @@ export function generateChallenge(configInput = DEFAULT_CONFIG, {
   rng = Math.random, id = "local", participantId = null, names
 } = {}) {
   const config = validateConfig(configInput);
-  const hard = config.mode === "netrun" && config.dv >= 16;
+  const effectiveDV = config.effectiveDV ?? config.dv;
+  const hard = config.mode === "netrun" && effectiveDV >= 16;
   const symbols = hard ? HARD_SYMBOLS : SYMBOLS;
   let matrix = Array.from({ length: config.size }, () =>
     Array.from({ length: config.size }, () => symbols[randomIndex(symbols.length, rng)]));
   const lengths = config.sequenceLengths ?? Array(config.targetCount).fill(config.sequenceLength);
   let solution, targets, solutions, decoys, decoyPaths;
-  if (hard && config.balance === 2 && config.dv >= 18 && config.rank === 0) {
+  if (hard && config.rank === 0 &&
+      ((config.balance === 2 && effectiveDV >= 18) || (config.balance === 3 && effectiveDV >= 17))) {
     ({ matrix, targets, solutions, decoys, decoyPaths } = lowInterfaceRoutes(config, rng));
     solution = solutions[0];
   } else if (hard) {

@@ -39,7 +39,7 @@
     "visibility": "Chat-Sichtbarkeit",
     "private": "SL und Teilnehmer",
     "public": "Alle",
-    "configHint": "Puffer = 4 + halber Interface-Rang, aufgerundet. Basiszeit = max(15, 25 + 4 x Rang - (DV - 6)). Ab DV16 und Rang unter 4 wird (DV - 14) x (4 - Rang) / 2 abgezogen, abgerundet auf volle Sekunden; mindestens 6 Sekunden. DV bestimmt die Sequenzlängen; Ziele können überlappen.",
+    "configHint": "Puffer = 4 + halber Interface-Rang, aufgerundet. Effektiver DV = Basis + Fehlversuche + 2 x Druckbedingungen + 3 x gegnerische Runner. Ab DV über Rang + 12 steigt der Zeitdruck; DV6 bietet zusätzliche Zeit. Ein Ziel bleibt einzeln lösbar; mehrere Ziele müssen nicht gemeinsam in den Puffer passen.",
     "configError": "Start fehlgeschlagen. Prüfe DV, Interface-Rang (0–10), Zielnamen und Chat-Berechtigungen. Details stehen in der Konsole.",
     "launch": "Rätsel starten",
     "challengeCard": "Cipher Breach: SL-Rätsel. Der zugewiesene Teilnehmer kann unten einen neuen Versuch öffnen.",
@@ -76,8 +76,22 @@
     "effectsOn": "Bildschirmeffekte an",
     "floorBreach": "NET / FLOOR BREACH",
     "retryReport": "Übertragung wiederholen",
-    "hardHint": "DV 16–20: zwölf Codes und getrennte Zielrouten. Unter Interface 4 sinkt die Zeit deutlich. Bei DV18/20 und Interface 0 bleiben 7/6 Sekunden; falsche Routen passen drei Codes lang, aber nur eine Route pro Ziel ist vollständig. Das gilt auch bei nur einem Ziel. Jedes Ziel ist einzeln erreichbar, nicht zwingend alle in einem Puffer; bei DV20 und Interface 0 ist höchstens eines von drei Zielen erreichbar.",
+    "hardHint": "Ab effektivem DV16: zwölf Codes und getrennte Zielrouten. Bei Interface 0 und effektivem DV ab 17 gibt es nur eine vollständige Route pro Ziel und falsche Dreierpfade. DV18/20 lassen bei Rang 0 nur 5/4,1 Sekunden. Das gilt auch bei nur einem Ziel; höchstens eines von drei Vierer-Zielen passt in den Puffer.",
     "uploadTargets": "Upload-Zielsequenzen",
-    "systemEjected": "Vom System getrennt"
+    "systemEjected": "Vom System getrennt",
+    "simple": "Einfach / ungesichert",
+    "everyday": "Alltäglich / leichte Sicherung",
+    "difficult": "Schwierig / persönliche Rechner",
+    "professional": "Professionell / Konzernsysteme",
+    "heroic": "Heroisch / moderne Technik",
+    "advanced": "Fortgeschritten / Hochsicherheit",
+    "incredible": "Unglaublich / Spitzentechnik",
+    "exceptional": "Extrem / Konzern-Hauptrechner",
+    "repeatedFailures": "Absolute Fehlversuche (+1 DV je)",
+    "pressureConditions": "Druckbedingungen (+2 DV je)",
+    "enemyRunners": "Gegnerische Runner (+3 DV je)",
+    "effectiveDV": "Effektiver DV",
+    "modifierHint": "Die SL setzt die Zähler manuell (0–10 je Kategorie). Druck, Eile und Heimlichkeit zählen jeweils einzeln. Gegnerische Runner addieren +3 DV und verkürzen zusätzlich die Zeit: geteilt durch (1 + 0,2 x Anzahl). Ihr sichtbarer Gegenhack-Trace folgt der Ablaufzeit, nicht echten Matrixzügen. Keine automatische Wiederholungsstrafe: Für einen erschwerten Neuversuch eine neue Einladung mit erhöhtem Zähler erstellen. Eine alte Einladung behält ihr Rätsel und ihre Werte.",
+    "counterhack": "Gegenhack / feindlicher Trace"
   }
 }

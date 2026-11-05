@@ -41,7 +41,7 @@ https://github.com/DominikGursch/foundry-cipher-breach/releases/download/v0.1.0/
 
 ## SL-/Spieler-Ablauf
 
-Die SL wählt **DV, bis zu drei benannte Ziele und Teilnehmer**. Bei DV 6 sind wie in der Referenz höchstens zwei Ziele verfügbar. Standardziele sind Passwort, Daten und Kontrolle; ihre Beschreibungen lassen sich frei ändern. Sie sind mögliche Erfolge, keine automatischen Änderungen an Charakteren oder Weltobjekten.
+Die SL wählt **Basis-DV, manuelle Erschwernisse, bis zu drei benannte Ziele und Teilnehmer**. Bei effektivem DV6 sind wie in der Referenz höchstens zwei Ziele verfügbar. Standardziele sind Passwort, Daten und Kontrolle; ihre Beschreibungen lassen sich frei ändern. Sie sind mögliche Erfolge, keine automatischen Änderungen an Charakteren oder Weltobjekten.
 
 Der Interface-Rang wird aus dem zugewiesenen Charakter gelesen: eingebettetes Item `type: "role"`, Name Netrunner bzw. `system.mainRoleAbility` mit Interface, Rang in `system.rank`. Auch Rang **0** bleibt erhalten. Fehlen Charakter oder Rolle, zeigt die Oberfläche dies ausdrücklich an und schlägt Übungsrang 4 zur Prüfung durch die SL vor. Andere Systeme können den Rang manuell angeben; kein System wird vorausgesetzt und kein Charakterwert wird geschrieben.
 
@@ -82,7 +82,23 @@ Bei jedem Ende zeigt die Matrix dasselbe Störbild: gedimmte, unscharfe Codes, v
 | 18 | 8 x 8 | 5, 5, 6 |
 | 20 | 8 x 8 | 5, 6, 6 |
 
-DV 6–14 stammen aus der Referenzmechanik; DV 16, 18 und 20 sind eine eigene Fortsetzung dieser Hausregel. Es sind weiterhin höchstens drei Ziele möglich. Die Pufferformel bleibt unverändert. Neue Hoch-DV-Breaches haben unter Interface 4 eine zusätzliche Zeitstrafe; alte Einladungen behalten mindestens 15 Sekunden. Lange Sequenzen werden bei niedrigen Rängen wie bisher auf den Puffer begrenzt, damit kein Ziel allein durch seine Länge unmöglich wird.
+Die SL wählt weiterhin **DV6/8/10/12/14/16/18/20**. Die ursprünglichen DV6–14-Presets stammen aus der Referenzmechanik; höhere Werte und Balance-Versionen sind eigene Hausregeln. Die vom Nutzer gelieferte Schwierigkeitstabelle wird auf diese Zweierschritte eingeordnet: Simple 4 →6, Everyday 7 →8, Difficult 9 →10, Professional 11 →12, Heroic 14 →14, Incredible 17 →18. DV16 ist die Zwischenstufe zur Hochsicherheit, DV20 die extreme Hauptrechner-Stufe. Das ist keine Behauptung identischer Würfelwahrscheinlichkeiten.
+
+Es sind weiterhin höchstens drei Ziele möglich (bei effektivem DV≤6 höchstens zwei). Lange Sequenzen werden auf den Puffer begrenzt, damit kein einzelnes Ziel allein durch seine Länge unmöglich wird.
+
+### Manuelle Erschwernisse und Wiederholung
+
+Die SL setzt drei Zähler (je 0–10, Standard 0):
+
+| Bedingung | Wirkung |
+|---|---|
+| Absolute Fehlversuche | +1 effektiver DV je Fehlschlag |
+| Druckbedingungen | +2 effektiver DV je Bedingung; Druck, Eile und Heimlichkeit zählen separat |
+| Gegnerische Runner | +3 effektiver DV je Runner; zusätzliche Zeitverkürzung und sichtbarer Gegenhack-Trace |
+
+**Effektiver DV:** `Basis-DV + repeatedFailures + 2 * pressureConditions + 3 * enemyRunners`. Ungerade Ergebnisse werden nicht gerundet. Werte über DV20 werden bis zum maximal möglichen DV80 weitergerechnet: Die Matrix bleibt höchstens 8×8, aber der Zeitdruck wächst weiter. Es gibt keine stille Begrenzung des effektiven DV.
+
+Für einen Neuversuch erstellt die SL eine **neue Einladung** und erhöht den Fehlerzähler nach einem absoluten Fehlschlag. Sie erhält eine neu generierte Matrix; die alte Einladung bleibt unverändert. Fehlversuche werden nicht automatisch gezählt, Teil-Erfolge nicht automatisch als absolute Fehlschläge gewertet und alte Einladungen nicht automatisch gesperrt. Die SL entscheidet, welche Einladung verwendet werden darf.
 
 **Puffer:** `4 + Math.ceil(Interface-Rang / 2)`
 
@@ -99,17 +115,27 @@ Der DV verändert die Pufferlänge nicht. Er beeinflusst Matrixgröße, Zielsequ
 
 **Basiszeit in Sekunden:** `Math.max(15, 25 + 4 * Interface-Rang - (DV - 6))`
 
-**Neue Balance (Version 2):** Bei DV ≥16 wird `pressure = (DV - 14) * Math.max(0, 4 - Rang) / 2` abgezogen. Die tatsächliche Zeit ist `Math.max(6, Math.floor(Basiszeit - pressure))`. Unter DV16 gibt es keine zusätzliche Zeitstrafe; ab Interface 4 gelten überall die bisherigen Zeiten.
+**Neue Balance (Version 3):** Für die Basiszeit wird der effektive DV verwendet. `overload = Math.max(0, effektiverDV - Rang - 12)`. Das Zeitbudget vor Rundung ist `(Basiszeit / (1 + overload / 3) + 20 * Math.max(0, 7 - effektiverDV)) / (1 + 0.2 * enemyRunners)`. Es wird auf eine Zehntelsekunde gerundet, mit mindestens **3 Sekunden**. Der einfache DV6 bietet damit mehr Planungszeit. Größere Abstände zwischen Sicherheitsniveau und Interface reduzieren die Zeit kontinuierlich; der frühere abrupte Unterschied zwischen Rang3 und Rang4 entfällt.
 
-| Interface | DV16 | DV18 | DV20 |
-|---|---|---|---|
-| 0 | 11s | 7s | 6s |
-| 1 | 16s | 11s | 6s |
-| 2 | 21s | 17s | 13s |
-| 3 | 26s | 23s | 20s |
-| 4 | 31s | 29s | 27s |
+Alle 88 Basis-DV-/Rang-Kombinationen ohne Erschwernisse, **Zeit in Sekunden**:
 
-Diese zusätzliche Hoch-DV-Zeitstrafe ist eine eigene Balanceentscheidung, keine Regel aus dem Referenzmodul oder dem offiziellen RED-Regelwerk. Die Zahl der Ziele ändert die Zeit nicht.
+| Interface | DV6 | DV8 | DV10 | DV12 | DV14 | DV16 | DV18 | DV20 |
+|---|---|---|---|---|---|---|---|---|
+| 0 | 45 | 23 | 21 | 19 | 10.2 | 6.4 | 5 | 4.1 |
+| 1 | 49 | 27 | 25 | 23 | 15.8 | 9.5 | 6.4 | 4.5 |
+| 2 | 53 | 31 | 29 | 27 | 25 | 13.8 | 9 | 6.3 |
+| 3 | 57 | 35 | 33 | 31 | 29 | 20.3 | 12.5 | 8.6 |
+| 4 | 61 | 39 | 37 | 35 | 33 | 31 | 17.4 | 11.6 |
+| 5 | 65 | 43 | 41 | 39 | 37 | 35 | 24.8 | 15.5 |
+| 6 | 69 | 47 | 45 | 43 | 41 | 39 | 37 | 21 |
+| 7 | 73 | 51 | 49 | 47 | 45 | 43 | 41 | 29.3 |
+| 8 | 77 | 55 | 53 | 51 | 49 | 47 | 45 | 43 |
+| 9 | 81 | 59 | 57 | 55 | 53 | 51 | 49 | 47 |
+| 10 | 85 | 63 | 61 | 59 | 57 | 55 | 53 | 51 |
+
+Die zusätzliche Überlastung und Runner-Zeitverkürzung sind eigene Balanceentscheidungen, keine offiziellen Regeln. Die Zahl der Ziele ändert die Zeit nicht. Bei extrem vielen Erschwernissen erreicht das Zeitbudget die 3-Sekunden-Untergrenze; weitere Zuschläge verkürzen es dann nicht mehr. Die Matrix wird nicht unbegrenzt größer.
+
+Bei gegnerischen Runnern füllt sich ein vierteiliger **Gegenhack-Trace** über das verbleibende Zeitbudget. Er zeigt die feindliche Aktivität, simuliert aber keine echten alternierenden Matrixzüge eines zweiten Spielers. Erreicht die Ablaufzeit ihr Ende, gilt der normale Timeout mit Störbild. Ein vorheriger Erfolg stoppt auch den Trace. Es gibt keine zufällige Änderung der Matrix während eines Zugs und keinen zusätzlichen versteckten Verlustwurf.
 
 **Interface-Rang:** ganze Zahl von 0 bis 10.
 
@@ -117,13 +143,13 @@ Bei weniger Zielen werden die ersten Sequenzlängen des DV-Presets verwendet. Je
 
 **DV 6–14:** Die Engine erzeugt einen legalen, nicht wiederholten Pfad und nimmt alle Zielsequenzen daraus. Wenn die Summe der Längen nicht in den Puffer passt, werden die Starts wie im Referenzcode über den Pfad verteilt: `Math.round(index * (buffer - length) / Math.max(1, count - 1))`. Dadurch überlappen Ziele und sind gemeinsam lösbar. Ein selbst gewählter Weg kann trotzdem erfolglos sein.
 
-**DV 16–20:** Zwölf statt sechs Codes und getrennte, unterschiedliche Zielrouten. Jedes Ziel besitzt einen eigenen legalen Weg innerhalb des Puffers; **alle Ziele gemeinsam sind nicht garantiert erreichbar**. Die Entscheidung, welche Belohnung verfolgt wird, gehört zur Schwierigkeit. Irreführende Einstiege sind Sequenz-Sackgassen, keine gesperrten Zellen; andere legale Züge bleiben erlaubt, verbrauchen aber den knappen Puffer.
+**Ab effektivem DV16:** Zwölf statt sechs Codes und getrennte, unterschiedliche Zielrouten. Jedes Ziel besitzt einen eigenen legalen Weg innerhalb des Puffers; **alle Ziele gemeinsam sind nicht garantiert erreichbar**. Die Entscheidung, welche Belohnung verfolgt wird, gehört zur Schwierigkeit. Irreführende Einstiege sind Sequenz-Sackgassen, keine gesperrten Zellen; andere legale Züge bleiben erlaubt, verbrauchen aber den knappen Puffer. Ungerade effektive DVs verwenden das nächste passende Matrix-/Längen-Preset, während ihre Zeit exakt berechnet wird.
 
-**Neue DV18/20-Breaches bei Interface 0:** Jedes Vierer-Ziel hat exakt einen vollständigen legalen Lösungsweg. Täuschpfade passen die ersten **drei** Codes und scheitern erst am vierten. Bei nur einem Ziel gibt es mindestens acht solche falschen Dreierpfade, verteilt auf vier (DV18) bzw. fünf (DV20) falsche Einstiege. Der frühere falsche Einstieg ohne passenden zweiten Code war zu leicht vorab auszuschließen. Die garantierte echte Route bleibt bestehen, aber 7 bzw. 6 Sekunden erfordern sehr schnelle Planung; ein Fehlklick verbraucht einen der vier Plätze ohne Reparaturmöglichkeit. Drei Ziele bleiben unterschiedlich, daher kann höchstens eines erreicht werden. Bei anderen Rängen/DVs bleiben die bisherigen falschen Einstiege erhalten; größere Puffer erlauben eher eine Korrektur.
+**Ab effektivem DV17 bei Interface 0:** Jedes Vierer-Ziel hat exakt einen vollständigen legalen Lösungsweg. Täuschpfade passen die ersten **drei** Codes und scheitern erst am vierten. Bei nur einem Ziel gibt es mindestens acht falsche Dreierpfade, verteilt auf vier (DV17–19) bzw. fünf (DV20+) falsche Einstiege. Die garantierte echte Route bleibt bestehen, aber DV18/20 ohne Zusatzerschwernisse geben nur 5 bzw. 4,1 Sekunden; ein Fehlklick verbraucht einen der vier Plätze ohne Reparaturmöglichkeit. Drei Ziele bleiben unterschiedlich, daher kann höchstens eines erreicht werden. Bei anderen Rängen/DVs bleiben die bisherigen falschen Einstiege erhalten; größere Puffer erlauben eher eine Korrektur.
 
 Es gibt keine versteckte Erfolgswürfelprobe und keine zufällig unlösbaren Rätsel. Eine nahezu unmögliche menschliche Erfolgsquote lässt sich ohne Spieltests nicht garantieren: geübte Spieler können die offene Matrix weiterhin lösen. Die messbaren Balancegrenzen sind Zeit, exakt eine vollständige Route und die Zahl täuschender Dreierpfade.
 
-Lösungswege und Markierungen der falschen Einstiege werden nur zur Konstruktion und für Tests verwendet, nicht in Chat-Dokumente geschrieben. Neue Konfigurationen speichern `balance: 2`; Konfigurationen ohne dieses Feld verwenden die alte Balance. Alte gespeicherte Rätsel bleiben unverändert spielbar.
+Lösungswege und Markierungen der falschen Einstiege werden nur zur Konstruktion und für Tests verwendet, nicht in Chat-Dokumente geschrieben. Neue Konfigurationen speichern `balance: 3`, Basis-/Effektiv-DV und alle drei Zähler. Alte Konfigurationen mit `balance: 2` behalten die vorige Zeitstrafe und 6-Sekunden-Untergrenze; ohne Balancefeld gilt Version1 mit mindestens 15 Sekunden. Alte gespeicherte Rätsel bleiben unverändert spielbar.
 
 Die früheren freien Konfigurationen bleiben intern für gespeicherte Schema-1-Einladungen und deren Replay unterstützt. Neue Einladungen verwenden Schema 2 mit überprüften DV-/Rangparametern und Zielnamen. Neue Ergebnisberichte verwenden ebenfalls Schema 2 für die Zeit ab Spielfeldöffnung; gespeicherte Schema-1-Berichte werden weiterhin mit der alten Zeitmessung ab erstem Zug nachgespielt.
 
@@ -147,7 +173,7 @@ await game.modules.get("foundry-cipher-breach").api.start({
 });
 ```
 
-Optional `rank: 6` zum Überschreiben. Ohne auslesbare Rolle muss das Makro den Rang ausdrücklich angeben; ungültige Eingaben werfen Fehler statt einen anderen Teilnehmer oder DV zu wählen.
+Optional `rank: 6` zum Überschreiben sowie `repeatedFailures: 1`, `pressureConditions: 2`, `enemyRunners: 1` für einen erschwerten Neuversuch. Alle Zähler sind standardmäßig 0. Die API erstellt stets eine neue Einladung; alte Einladungen werden nicht verändert. Ohne auslesbare Rolle muss das Makro den Rang ausdrücklich angeben; ungültige Eingaben werfen Fehler statt einen anderen Teilnehmer oder DV zu wählen.
 
 ## Vertrauensgrenze
 

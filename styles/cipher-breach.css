@@ -253,6 +253,11 @@
 }
 .cipher-breach .cb-objective-preview { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .cipher-breach .cb-objective-preview input { min-width: 0; width: 100%; }
+.cipher-breach .cb-counterhack { margin-top: 14px; color: var(--cb-warm); font-size: 12px; }
+.cipher-breach .cb-counterhack progress { width: 100%; height: 4px; }
+.cipher-breach .cb-rival-buffer { display: flex; gap: 6px; list-style: none; padding: 0; margin: 8px 0; }
+.cipher-breach .cb-rival-buffer li { border: 1px dashed var(--cb-line); padding: 4px 8px; min-width: 32px; text-align: center; }
+.cipher-breach .cb-rival-buffer .cb-traced { border-style: solid; border-color: var(--cb-accent); background: #ff4b5530; }
 .cipher-breach.cb-board .cb-targets code.cb-next { color: var(--cb-warm); border-color: var(--cb-accent); }
 .cipher-breach.cb-board .cb-targets code.cb-highlight { background: var(--cb-warm); color: var(--cb-bg); }
 .cipher-breach.cb-board .cb-target-status { grid-column: 1 / -1; color: var(--cb-success); text-transform: uppercase; letter-spacing: .14em; }

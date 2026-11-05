@@ -46,14 +46,18 @@ function open() {
   });
 }
 
-async function start({ user, dv = 8, rank, targetCount, names, publicResult = false } = {}) {
+async function start({
+  user, dv = 8, rank, targetCount, names, publicResult = false,
+  repeatedFailures = 0, pressureConditions = 0, enemyRunners = 0
+} = {}) {
   if (!game.user.isGM) throw new Error("Only a GM can launch a breach.");
   const participant = game.users.get(user);
   if (!participant) throw new Error("Select an existing participant.");
   const actorRank = rank ?? interfaceRank(participant.character);
   if (actorRank === null) throw new Error("No Interface role found; specify rank explicitly.");
-  return launch(breachConfig({ dv, rank: actorRank, targetCount }), participant.id, publicResult,
-    names ?? ["backdoor", "data", "control"].slice(0, targetCount ?? (dv === 6 ? 2 : 3)).map(t));
+  const config = breachConfig({ dv, rank: actorRank, targetCount, repeatedFailures, pressureConditions, enemyRunners });
+  return launch(config, participant.id, publicResult,
+    names ?? ["backdoor", "data", "control"].slice(0, config.targetCount).map(t));
 }
 
 const boards = new Map();

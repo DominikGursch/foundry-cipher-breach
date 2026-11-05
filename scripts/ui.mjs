@@ -1,5 +1,5 @@
 import { Puzzle, generateChallenge, legalCells } from "./engine.mjs";
-import { breachConfig, DV_PRESETS } from "./mechanics.mjs";
+import { breachConfig, DIFFICULTIES, difficultyPreset } from "./mechanics.mjs";
 
 export function element(tag, options = {}, children = []) {
   const node = document.createElement(tag);
@@ -115,6 +115,19 @@ export function openBoard(challenge, { t, onSubmit = null, onError = console.err
       element("h3", {}, [element("span", { text: t("buffer") }), bufferCount]), buffer
     ])
   ]));
+  const rivalTokens = [];
+  const rivalProgress = element("progress", { attributes: { max: 100, value: 0, "aria-label": t("counterhack") } });
+  if (config.balance === 3 && config.enemyRunners > 0) {
+    const trace = element("ol", { className: "cb-rival-buffer", attributes: { "aria-hidden": "true" } },
+      Array.from({ length: 4 }, () => {
+        const token = element("li", { text: "\u00b7" });
+        rivalTokens.push(token);
+        return token;
+      }));
+    root.querySelector(".cb-buffer-panel").append(element("div", { className: "cb-counterhack" }, [
+      element("strong", { text: `${t("counterhack")} / ${config.enemyRunners}` }), trace, rivalProgress
+    ]));
+  }
   const axis = element("p", { className: "cb-axis" });
   const grid = element("div", {
     className: "cb-matrix",
@@ -224,6 +237,15 @@ export function openBoard(challenge, { t, onSubmit = null, onError = console.err
     const remaining = Math.max(0, (config.seconds * 1000 - puzzle.elapsed()) / 1000);
     time.textContent = `${remaining.toFixed(1)}s`;
     timeBar.value = remaining;
+    if (rivalTokens.length) {
+      const traceProgress = Math.min(1, puzzle.elapsed() / (config.seconds * 1000));
+      rivalProgress.value = traceProgress * 100;
+      rivalTokens.forEach((token, index) => {
+        const traced = index < Math.floor(traceProgress * rivalTokens.length);
+        token.textContent = traced ? ["7C", "AB", "CD", "FF"][index] : "\u00b7";
+        token.classList.toggle("cb-traced", traced);
+      });
+    }
     time.setAttribute("aria-label", `${t("time")}: ${remaining}s`);
     axis.textContent = ended ? t("ended") : t(puzzle.moves.length % 2 === 0 ? "activeRow" : "activeColumn");
     const statusText = ended ? `${t(currentStatus)} ${t("targets")}: ${puzzle.matched.filter(Boolean).length}/${puzzle.matched.length}` : t(currentStatus);
@@ -288,10 +310,20 @@ export function openConfiguration({
 }) {
   const root = dialog("Cipher Breach", t);
   const form = element("form", { className: "cb-config" });
-  const dv = element("select", { attributes: { name: "dv" } }, Object.entries(DV_PRESETS).map(([value, preset]) =>
-    element("option", { text: `DV ${value} / ${preset.size} x ${preset.size}`, attributes: { value } })));
+  const dv = element("select", { attributes: { name: "dv" } }, Array.from({ length: 8 }, (_, index) => {
+    const value = 6 + index * 2;
+    return element("option", {
+      text: `DV ${value}${DIFFICULTIES[value] ? ` / ${t(DIFFICULTIES[value])}` : ""}`, attributes: { value }
+    });
+  }));
   dv.value = "8";
   form.append(element("label", {}, [element("span", { text: t("dv") }), dv]));
+  const modifiers = Object.fromEntries(["repeatedFailures", "pressureConditions", "enemyRunners"].map(key => {
+    const input = element("input", { attributes: { name: key, type: "number", min: 0, max: 10, step: 1, required: "", value: 0 } });
+    form.append(element("label", {}, [element("span", { text: t(key) }), input]));
+    return [key, input];
+  }));
+  form.append(element("p", { className: "cb-note", text: t("modifierHint") }));
   const targetCount = element("select", { attributes: { name: "targetCount" } });
   form.append(element("label", {}, [element("span", { text: t("targetCount") }), targetCount]));
   const names = ["backdoor", "data", "control"].map((key, index) => element("input", {
@@ -328,15 +360,21 @@ export function openConfiguration({
   const hardHint = element("p", { className: "cb-note", text: t("hardHint") });
   form.append(hardHint);
   const errorNode = element("p", { className: "cb-error", attributes: { role: "alert" } });
+  function configuration() {
+    return breachConfig({
+      dv: Number(dv.value), rank: rank.value === "" ? NaN : Number(rank.value), targetCount: Number(targetCount.value),
+      ...Object.fromEntries(Object.entries(modifiers).map(([key, input]) => [key, input.value === "" ? NaN : Number(input.value)]))
+    });
+  }
   function update() {
     try {
-      const config = breachConfig({ dv: Number(dv.value), rank: Number(rank.value), targetCount: Number(targetCount.value) });
-      hardHint.hidden = config.dv < 16;
+      const config = configuration();
+      hardHint.hidden = config.effectiveDV < 16;
       nameLabels.forEach((label, index) => {
         label.hidden = index >= config.targetCount;
         names[index].required = index < config.targetCount;
       });
-      derived.textContent = `${config.size} x ${config.size} / ${t("buffer")}: ${config.buffer} / ${config.seconds}s / ${t("targets")}: ${config.sequenceLengths.join(", ")}`;
+      derived.textContent = `${t("effectiveDV")}: ${config.dv} + ${config.effectiveDV - config.dv} = ${config.effectiveDV} / ${config.size} x ${config.size} / ${t("buffer")}: ${config.buffer} / ${config.seconds}s / ${t("targets")}: ${config.sequenceLengths.join(", ")}`;
       errorNode.textContent = "";
     } catch (error) {
       derived.textContent = "";
@@ -346,7 +384,17 @@ export function openConfiguration({
   }
   function selectDV() {
     const previous = Number(targetCount.value) || 3;
-    const max = DV_PRESETS[dv.value].lengths.length;
+    let max;
+    try {
+      const effective = Number(dv.value) + Number(modifiers.repeatedFailures.value) +
+        2 * Number(modifiers.pressureConditions.value) + 3 * Number(modifiers.enemyRunners.value);
+      max = difficultyPreset(effective).lengths.length;
+    } catch (error) {
+      derived.textContent = "";
+      errorNode.textContent = t("configError");
+      onError(error);
+      return;
+    }
     targetCount.replaceChildren(...Array.from({ length: max }, (_, index) => element("option", {
       text: index + 1, attributes: { value: index + 1 }
     })));
@@ -360,6 +408,7 @@ export function openConfiguration({
     update();
   }
   dv.addEventListener("change", selectDV);
+  Object.values(modifiers).forEach(input => input.addEventListener("input", selectDV));
   targetCount.addEventListener("change", update);
   rank.addEventListener("input", update);
   participant.addEventListener("change", selectParticipant);
@@ -371,7 +420,7 @@ export function openConfiguration({
     event.preventDefault();
     launch.disabled = true;
     try {
-      const config = breachConfig({ dv: Number(dv.value), rank: Number(rank.value), targetCount: Number(targetCount.value) });
+      const config = configuration();
       const objectives = names.slice(0, config.targetCount).map(input => input.value.trim());
       if (participant.value) {
         if (!isGM || !onLaunch) throw new Error("Only a GM can assign a breach.");
@@ -405,6 +454,9 @@ export function resultCard(challenge, result, { t }) {
   return element("div", { className: "cb-report" }, [
     element("strong", { text: `${t(result.outcome)} / ${result.matched.filter(Boolean).length}/${result.matched.length}` }),
     element("p", { text: `${challenge.config.mode === "netrun" ? `DV ${challenge.config.dv} / Interface ${challenge.config.rank} / ` : ""}${(result.elapsedMs / 1000).toFixed(1)}s / ${t("buffer")} ${result.moves.length}/${challenge.config.buffer}` }),
+    ...(challenge.config.balance === 3 ? [element("p", {
+      text: `${t("effectiveDV")}: ${challenge.config.effectiveDV} / ${t("repeatedFailures")}: ${challenge.config.repeatedFailures} / ${t("pressureConditions")}: ${challenge.config.pressureConditions} / ${t("enemyRunners")}: ${challenge.config.enemyRunners}`
+    })] : []),
     element("ul", {}, result.matched.map((matched, index) => element("li", {
       className: matched ? "cb-success" : "cb-failure",
       text: `${matched ? t("matched") : t("missed")}: ${challenge.names?.[index] ?? `${t("objective")} ${index + 1}`}`

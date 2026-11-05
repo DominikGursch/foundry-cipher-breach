@@ -12,7 +12,7 @@ test("GM configuration derives DV and character values, including zero and missi
   await expect(page.locator(".cb-config .cb-metadata")).toContainText("4, 4, 5");
   await page.locator('[name="participant"]').selectOption("demo0");
   await expect(page.locator('[name="rank"]')).toHaveValue("0");
-  await expect(page.locator(".cb-config .cb-metadata")).toContainText("Puffer: 4 / 17s");
+  await expect(page.locator(".cb-config .cb-metadata")).toContainText("Puffer: 4 / 10.2s");
   await expect(page.locator(".cb-config .cb-metadata")).toContainText("4, 4, 4");
   await page.locator('[name="participant"]').selectOption("no-role");
   await expect(page.locator('[name="rank"]')).toHaveValue("4");
@@ -264,10 +264,10 @@ test("DV 16-20 are available and no-move timeout is automatically reported", asy
     await expect(page.locator(".cb-config .cb-metadata")).toContainText(lengths);
   }
   await page.locator('[name="participant"]').selectOption("demo0");
-  await expect(page.locator(".cb-config .cb-metadata")).toContainText("6s");
+  await expect(page.locator(".cb-config .cb-metadata")).toContainText("4.1s");
   await page.locator('[type="submit"]').click();
   await expect(page.locator(".cb-cell")).toHaveCount(64);
-  await page.clock.runFor(6000);
+  await page.clock.runFor(4200);
   await expect(page.locator("#results .cb-report")).toContainText("Zeitlimit erreicht");
   await expect(page.locator("#results .cb-report")).toContainText("Puffer 0/4");
   await expect(page.locator("#results .cb-report")).toHaveCount(1);
@@ -337,7 +337,7 @@ test("DV20 rank zero decoy fails while a real route reports exactly one achieved
   await expect(page.locator(".cb-status")).toContainText("Buffer full");
 });
 
-for (const [dv, seconds] of [[18, 7], [20, 6]]) {
+for (const [dv, seconds] of [[18, 5], [20, 4.1]]) {
   test(`single-objective DV${dv} Interface zero has a short clock and a three-code trap`, async ({ page }) => {
     await page.clock.install();
     await page.goto("/preview/?lang=en");
@@ -360,7 +360,7 @@ for (const [dv, seconds] of [[18, 7], [20, 6]]) {
       });
       window.openTestBoard();
     }, dv);
-    await expect(page.locator(".cb-time")).toHaveText(`${seconds}.0s`);
+    await expect(page.locator(".cb-time")).toHaveText(`${seconds.toFixed(1)}s`);
     await expect(page.locator(".cb-targets li")).toHaveCount(1);
     const trap = await page.evaluate(() => window.generated.decoyPaths[0]);
     for (const cell of trap) await page.locator(".cb-cell").nth(cell.row * 8 + cell.col).click();
@@ -375,7 +375,7 @@ for (const [dv, seconds] of [[18, 7], [20, 6]]) {
     expect(await page.evaluate(() => window.reports[1].outcome)).toBe("won");
     await page.locator(".cb-jack").click();
     await page.evaluate(() => window.openTestBoard());
-    await page.clock.runFor(seconds * 1000);
+    await page.clock.runFor(Math.ceil(seconds * 1000 / 200) * 200);
     await expect(page.locator(".cb-status")).toContainText("Time limit reached");
     expect(await page.evaluate(() => window.reports[2].elapsedMs)).toBe(seconds * 1000);
   });
@@ -386,7 +386,7 @@ test("red terminal arranges timer and buffer above matrix and upload targets", a
   await page.goto("/preview/");
   await page.locator("#open").click();
   await page.locator('[name="dv"]').selectOption("20");
-  await expect(page.locator(".cb-config")).toContainText("höchstens eines von drei Zielen");
+  await expect(page.locator(".cb-config")).toContainText("höchstens eines von drei Vierer-Zielen");
   await page.locator('[type="submit"]').click();
   const color = selector => page.locator(selector).first().evaluate(node => getComputedStyle(node).backgroundColor);
   expect(await color(".cb-board")).toBe("rgb(16, 14, 22)");
@@ -478,6 +478,100 @@ for (const width of [1280, 390]) {
     expect(snapshots[0].result.matched.filter(Boolean).length).toBe(1);
   });
 }
+
+for (const lang of ["de", "en"]) {
+  test(`GM modifiers stack exactly, persist in reports and show a timed hostile trace in ${lang}`, async ({ page }) => {
+    await page.clock.install();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`/preview/?lang=${lang}`);
+    await page.locator("#open").click();
+    expect(await page.locator('[name="dv"] option').evaluateAll(nodes => nodes.map(node => node.value))).toEqual(
+      ["6", "8", "10", "12", "14", "16", "18", "20"]);
+    for (const key of ["repeatedFailures", "pressureConditions", "enemyRunners"]) {
+      await expect(page.locator(`[name="${key}"]`)).toHaveValue("0");
+    }
+    await page.locator('[name="dv"]').selectOption("12");
+    await page.locator('[name="repeatedFailures"]').fill("2");
+    await page.locator('[name="pressureConditions"]').fill("2");
+    await page.locator('[name="enemyRunners"]').fill("1");
+    await expect(page.locator(".cb-config .cb-metadata")).toContainText("12 + 9 = 21");
+    const seconds = await page.evaluate(async () => {
+      const { breachConfig } = await import("/scripts/mechanics.mjs");
+      return breachConfig({ dv: 12, rank: 4, repeatedFailures: 2, pressureConditions: 2, enemyRunners: 1 }).seconds;
+    });
+    await expect(page.locator(".cb-config .cb-metadata")).toContainText(`${seconds}s`);
+    await page.locator('[type="submit"]').click();
+    await expect(page.locator(".cb-counterhack")).toBeVisible();
+    await expect(page.locator(".cb-board-meta")).toHaveCount(0);
+    const matrix = await page.locator(".cb-cell").allTextContents();
+    await page.clock.runFor(Math.ceil(seconds * 500 / 200) * 200);
+    await expect(page.locator(".cb-traced")).toHaveCount(2);
+    expect(await page.locator(".cb-cell").allTextContents()).toEqual(matrix);
+    const bounds = await page.locator(".cb-board").evaluate(node => node.scrollWidth <= node.clientWidth);
+    expect(bounds).toBe(true);
+    await page.clock.runFor(Math.ceil(seconds * 1000 / 200) * 200);
+    await expect(page.locator(".cb-traced")).toHaveCount(4);
+    await expect(page.locator(".cb-signal-lost")).toBeVisible();
+    await expect(page.locator("#results .cb-report")).toHaveCount(1);
+    await expect(page.locator("#results .cb-report")).toContainText("21");
+    await page.locator(".cb-jack").click();
+    await page.locator("#open").click();
+    await expect(page.locator('[name="repeatedFailures"]')).toHaveValue("0");
+    await page.locator('[name="repeatedFailures"]').fill("1.5");
+    await expect(page.locator(".cb-config .cb-error")).not.toBeEmpty();
+    await page.locator('[name="repeatedFailures"]').fill("0");
+    await expect(page.locator(".cb-config .cb-error")).toBeEmpty();
+    await page.locator('[type="submit"]').click();
+    await expect(page.locator(".cb-counterhack")).toHaveCount(0);
+  });
+}
+
+test("Foundry API applies manual retry, pressure and opponent modifiers without changing old invitations", async ({ page }) => {
+  await mockFoundry(page);
+  const configs = await page.evaluate(async () => {
+    const api = game.modules.get("foundry-cipher-breach").api;
+    const first = await api.start({ user: "runner", dv: 14, targetCount: 1 });
+    const retry = await api.start({
+      user: "runner", dv: 14, targetCount: 1, repeatedFailures: 1, pressureConditions: 2, enemyRunners: 1
+    });
+    return [first.getFlag("foundry-cipher-breach", "challenge"), retry.getFlag("foundry-cipher-breach", "challenge")];
+  });
+  expect(configs[0].config.effectiveDV).toBe(14);
+  expect(configs[1].config.effectiveDV).toBe(22);
+  expect(configs[1].config.repeatedFailures).toBe(1);
+  expect(configs[1].config.pressureConditions).toBe(2);
+  expect(configs[1].config.enemyRunners).toBe(1);
+  expect(configs[1].config.seconds).toBeLessThan(configs[0].config.seconds);
+  expect(configs[0].names).toHaveLength(1);
+  expect(configs[1].names).toHaveLength(1);
+  expect(configs[1].id).not.toBe(configs[0].id);
+  expect(configs[1].matrix).not.toEqual(configs[0].matrix);
+});
+
+test("winning stops the hostile trace without losing the achieved objective later", async ({ page }) => {
+  await page.clock.install();
+  await page.goto("/preview/?lang=en");
+  await page.evaluate(async () => {
+    const { breachConfig } = await import("/scripts/mechanics.mjs");
+    const { generateChallenge } = await import("/scripts/engine.mjs");
+    const { openBoard } = await import("/scripts/ui.mjs");
+    const strings = (await (await fetch("/lang/en.json")).json()).CB;
+    window.generated = generateChallenge(breachConfig({ dv: 6, rank: 4, targetCount: 1, enemyRunners: 1 }));
+    window.reports = [];
+    openBoard(window.generated.challenge, { t: key => strings[key], onSubmit: async result => window.reports.push(result) });
+  });
+  await page.clock.runFor(10000);
+  const solution = await page.evaluate(() => window.generated.solution);
+  for (const cell of solution) {
+    if (await page.locator(".cb-board.cb-ended").count()) break;
+    await page.locator(".cb-cell").nth(cell.row * 6 + cell.col).click();
+  }
+  await expect(page.locator(".cb-status")).toContainText("All targets matched");
+  const trace = await page.locator(".cb-counterhack progress").evaluate(node => node.value);
+  await page.clock.runFor(60000);
+  expect(await page.locator(".cb-counterhack progress").evaluate(node => node.value)).toBe(trace);
+  expect(await page.evaluate(() => window.reports.map(result => result.outcome))).toEqual(["won"]);
+});
 
 for (const lang of ["de", "en"]) {
   test(`timeout disrupts only the matrix signal in ${lang}, including reduced motion`, async ({ page }) => {

@@ -17,7 +17,7 @@ test("DV resources include versioned low-Interface pressure while retaining refe
   ];
   for (const [dv, size, lengths] of expected) {
     for (let rank = 0; rank <= 10; rank++) {
-      const config = breachConfig({ dv, rank });
+      const config = breachConfig({ dv, rank, balance: 2 });
       assert.equal(config.size, size);
       assert.equal(config.buffer, 4 + Math.ceil(rank / 2));
       const reference = Math.max(15, 25 + rank * 4 - (dv - 6));
@@ -28,9 +28,9 @@ test("DV resources include versioned low-Interface pressure while retaining refe
       assert.deepEqual(validateConfig(config), config);
     }
   }
-  assert.equal(breachConfig({ dv: 14, rank: 0 }).seconds, 17);
-  assert.equal(breachConfig({ dv: 18, rank: 0 }).seconds, 7);
-  assert.equal(breachConfig({ dv: 20, rank: 0 }).seconds, 6);
+  assert.equal(breachConfig({ dv: 14, rank: 0, balance: 2 }).seconds, 17);
+  assert.equal(breachConfig({ dv: 18, rank: 0, balance: 2 }).seconds, 7);
+  assert.equal(breachConfig({ dv: 20, rank: 0, balance: 2 }).seconds, 6);
   assert.equal(breachConfig({ dv: 8, rank: 7 }).buffer, 8);
 });
 
@@ -107,7 +107,7 @@ test("new DV18/20 rank-zero puzzles have exactly one route per objective and lat
   for (const dv of [18, 20]) {
     for (const targetCount of [1, 2, 3]) {
       for (let seed = 0; seed < 100; seed++) {
-        const config = breachConfig({ dv, rank: 0, targetCount });
+        const config = breachConfig({ dv, rank: 0, targetCount, balance: 2 });
         const generated = generateChallenge(config, { rng: seeded(seed) });
         const { challenge, solutions, decoyPaths } = generated;
         assert.deepEqual(generated, generateChallenge(config, { rng: seeded(seed) }));
@@ -154,7 +154,7 @@ test("saved balance-one challenges retain their original clock and new balance f
   assert.equal(validateChallenge(old).config.seconds, 15);
   const current = generateChallenge(breachConfig({ dv: 20, rank: 0, targetCount: 1 })).challenge;
   assert.throws(() => validateChallenge({ ...current, config: { ...current.config, seconds: 15 } }));
-  assert.throws(() => validateChallenge({ ...current, config: { ...current.config, balance: 3 } }));
+  assert.throws(() => validateChallenge({ ...current, config: { ...current.config, balance: 4 } }));
   assert.throws(() => validateChallenge({ ...current, config: { ...current.config, balance: undefined } }));
 });
 
@@ -235,6 +235,87 @@ test("DV/rank/schema tampering and malformed objective names fail explicitly", (
   }
   const unsafe = ["<script>alert(1)</script>", "B", "C"];
   assert.deepEqual(validateChallenge({ ...challenge, names: unsafe }).names, unsafe);
+});
+
+test("balance 3 audits every base DV, Interface rank and stacked modifier combination", () => {
+  for (const dv of Object.keys(DV_PRESETS).map(Number)) {
+    for (let rank = 0; rank <= 10; rank++) {
+      const unmodified = breachConfig({ dv, rank, targetCount: 1 });
+      for (let repeatedFailures = 0; repeatedFailures <= 10; repeatedFailures++) {
+        for (let pressureConditions = 0; pressureConditions <= 10; pressureConditions++) {
+          for (let enemyRunners = 0; enemyRunners <= 10; enemyRunners++) {
+            const config = breachConfig({ dv, rank, targetCount: 1, repeatedFailures, pressureConditions, enemyRunners });
+            assert.equal(config.effectiveDV, dv + repeatedFailures + 2 * pressureConditions + 3 * enemyRunners);
+            assert.equal(config.balance, 3);
+            assert.equal(config.buffer, 4 + Math.ceil(rank / 2));
+            assert.ok(config.seconds >= 3 && config.seconds <= unmodified.seconds);
+            assert.ok(config.size >= unmodified.size);
+            assert.ok(config.sequenceLengths[0] >= unmodified.sequenceLengths[0]);
+            assert.deepEqual(validateConfig(config), config);
+            for (const key of ["repeatedFailures", "pressureConditions", "enemyRunners"]) {
+              if (config[key] < 10) {
+                const harder = breachConfig({ ...config, [key]: config[key] + 1 });
+                assert.ok(harder.seconds <= config.seconds);
+                assert.ok(harder.size >= config.size);
+                assert.ok(harder.sequenceLengths[0] >= config.sequenceLengths[0]);
+              }
+            }
+            if (rank < 10) {
+              const skilled = breachConfig({ ...config, rank: rank + 1 });
+              assert.ok(skilled.seconds >= config.seconds);
+              assert.ok(skilled.buffer >= config.buffer);
+            }
+          }
+        }
+      }
+    }
+  }
+  const beginner = [6, 8, 10, 12, 14, 16, 18, 20].map(dv => breachConfig({ dv, rank: 0, targetCount: 1 }).seconds);
+  assert.deepEqual(beginner, [45, 23, 21, 19, 10.2, 6.4, 5, 4.1]);
+  assert.equal(breachConfig({ dv: 20, rank: 10 }).seconds, 51);
+  const retryOnly = breachConfig({ dv: 14, rank: 7, repeatedFailures: 3 });
+  const opponent = breachConfig({ dv: 14, rank: 7, enemyRunners: 1 });
+  assert.equal(retryOnly.effectiveDV, opponent.effectiveDV);
+  assert.ok(opponent.seconds < retryOnly.seconds);
+  const version2 = generateChallenge(breachConfig({ dv: 20, rank: 0, targetCount: 1, balance: 2 })).challenge;
+  assert.equal(validateChallenge(version2).config.seconds, 6);
+  for (const key of ["repeatedFailures", "pressureConditions", "enemyRunners"]) {
+    for (const value of [-1, 11, 0.5, "1", null, NaN]) assert.throws(() => breachConfig({ [key]: value }));
+    const config = breachConfig();
+    assert.throws(() => validateConfig({ ...config, [key]: undefined }));
+  }
+  assert.throws(() => validateConfig({ ...breachConfig(), effectiveDV: 10 }));
+});
+
+test("all effective DVs 6-80 and all Interface ranks retain a playable individual objective", () => {
+  for (let effectiveDV = 6; effectiveDV <= 80; effectiveDV++) {
+    const dv = effectiveDV <= 20 ? effectiveDV - effectiveDV % 2 : 20;
+    const extra = effectiveDV - dv;
+    const enemyRunners = Math.min(10, Math.floor(extra / 3));
+    const pressureConditions = Math.min(10, Math.floor((extra - 3 * enemyRunners) / 2));
+    const repeatedFailures = extra - 3 * enemyRunners - 2 * pressureConditions;
+    for (let rank = 0; rank <= 10; rank++) {
+      const base = breachConfig({ dv, rank, repeatedFailures, pressureConditions, enemyRunners });
+      for (let targetCount = 1; targetCount <= base.targetCount; targetCount++) {
+        for (let seed = 0; seed < 3; seed++) {
+          const config = breachConfig({ ...base, targetCount });
+          const { challenge, solution, solutions } = generateChallenge(config, { rng: seeded(seed) });
+          assert.equal(config.effectiveDV, effectiveDV);
+          assert.deepEqual(validateChallenge(challenge), challenge);
+          for (const [index, path] of (solutions ?? [solution]).entries()) {
+            const puzzle = new Puzzle(challenge, { now: () => 0 });
+            for (const cell of path) {
+              if (puzzle.status === "won") break;
+              puzzle.select(cell.row, cell.col);
+            }
+            assert.ok(puzzle.matched[index]);
+            puzzle.jackOut();
+            assert.equal(replayResult(challenge, puzzle.result()).matched[index], true);
+          }
+        }
+      }
+    }
+  }
 });
 
 test("partial achievement, dead ends and the countdown are preserved in reports", () => {
