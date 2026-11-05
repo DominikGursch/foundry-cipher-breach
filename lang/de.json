@@ -5,7 +5,7 @@
     "menuHint": "Lokal üben oder als SL eine Code-Matrix an einen Spieler senden.",
     "close": "Schließen",
     "houseRule": "Optionale Hausregel / eigenständiges Matrixrätsel. Kein offizielles RED-Netrunning.",
-    "rules": "Beginne in der obersten Zeile. Wähle danach abwechselnd in der Spalte und Zeile der letzten Zelle. Jede Zelle darf einmal gewählt werden. Bilde alle Zielsequenzen zusammenhängend im Puffer, in beliebiger Reihenfolge. Die Zeit läuft ab der ersten gültigen Auswahl.",
+    "rules": "Beginne in der obersten Zeile. Wähle danach abwechselnd in der Spalte und Zeile der letzten Zelle. Jede Zelle darf einmal gewählt werden. Bilde alle Zielsequenzen zusammenhängend im Puffer, in beliebiger Reihenfolge. Die Zeit läuft sofort beim Öffnen des Spielfelds, auch ohne Zug.",
     "matrix": "Code-Matrix",
     "buffer": "Puffer",
     "targets": "Zielsequenzen",
@@ -15,7 +15,7 @@
     "activeRow": "Wähle in der aktiven Zeile",
     "activeColumn": "Wähle in der aktiven Spalte",
     "ready": "Bereit. Wähle zum Start eine Zelle der obersten Zeile.",
-    "running": "Verbindung aktiv.",
+    "running": "Deep Dive aktiv. Countdown läuft.",
     "won": "Alle Ziele erreicht.",
     "timeout": "Zeitlimit erreicht.",
     "full-buffer": "Puffer voll. Nicht alle Ziele erreicht.",
@@ -68,7 +68,11 @@
     "instructions": "Spielanleitung",
     "previewHint": "Browser-Simulation: Als SL konfigurieren, an einen Beispielcharakter senden, dann als dieser Teilnehmer spielen. Ergebnisse erscheinen unten. Kein Foundry-Server und kein echtes Mehrspielersystem werden simuliert.",
     "previewRunner": "Demo-Runner",
-    "previewLaunched": "SL-Einladung zugestellt. Der zugewiesene Spieler kann mit dem ersten Code starten.",
-    "previewResult": "Spielerbericht / SL-Ansicht"
+    "previewLaunched": "SL-Einladung zugestellt. Das Spielfeld ist geöffnet; der Countdown läuft bereits.",
+    "previewResult": "Spielerbericht / SL-Ansicht",
+    "deepDive": "DEEP DIVE / NEURALE VERBINDUNG AKTIV",
+    "linkClosed": "NEURALE VERBINDUNG GETRENNT",
+    "effectsOff": "Bildschirmeffekte aus",
+    "effectsOn": "Bildschirmeffekte an"
   }
 }

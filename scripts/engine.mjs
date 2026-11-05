@@ -1,3 +1,5 @@
+import { breachConfig } from "./mechanics.mjs";
+
 export const SYMBOLS = Object.freeze(["0A", "1C", "2E", "3F", "4B", "5D"]);
 export const DEFAULT_CONFIG = Object.freeze({
   size: 5, buffer: 8, targetCount: 2, sequenceLength: 3, seconds: 60
@@ -28,7 +30,7 @@ function identifier(value, label) {
 export function validateConfig(input) {
   record(input, "configuration");
   if (input.mode === "netrun") {
-    integer(input.dv, 6, 14, "DV");
+    integer(input.dv, 6, 20, "DV");
     integer(input.rank, 0, 10, "Interface rank");
     integer(input.targetCount, 1, 3, "Target count");
     const config = breachConfig(input);
@@ -159,7 +161,7 @@ export function generateChallenge(configInput = DEFAULT_CONFIG, {
 export function validateResult(input, challengeInput) {
   const challenge = validateChallenge(challengeInput);
   record(input, "result");
-  if (input.schema !== 1 || input.challengeId !== challenge.id || !TERMINAL.has(input.outcome)) {
+  if (![1, 2].includes(input.schema) || input.challengeId !== challenge.id || !TERMINAL.has(input.outcome)) {
     throw new Error("Invalid result identity or outcome.");
   }
   if (!Array.isArray(input.moves) || input.moves.length > challenge.config.buffer) {
@@ -173,11 +175,11 @@ export function validateResult(input, challengeInput) {
     };
   });
   const elapsedMs = integer(input.elapsedMs, 0, challenge.config.seconds * 1000, "Elapsed time");
-  return { schema: 1, challengeId: challenge.id, moves, elapsedMs, outcome: input.outcome };
+  return { schema: input.schema, challengeId: challenge.id, moves, elapsedMs, outcome: input.outcome };
 }
 
 export class Puzzle {
-  constructor(challenge, { now = () => performance.now() } = {}) {
+  constructor(challenge, { now = () => performance.now(), startOnOpen = true } = {}) {
     this.challenge = validateChallenge(challenge);
     this.now = now;
     this.moves = [];
@@ -186,6 +188,16 @@ export class Puzzle {
     this.startedAt = null;
     this.finishedElapsed = null;
     this.lastTime = null;
+    this.resultSchema = startOnOpen ? 2 : 1;
+    if (startOnOpen) this.start();
+  }
+
+  start() {
+    if (this.startedAt !== null) return;
+    const time = this.now();
+    if (!Number.isFinite(time)) throw new Error("Invalid clock.");
+    this.startedAt = this.lastTime = time;
+    this.status = "running";
   }
 
   elapsed() {
@@ -221,12 +233,7 @@ export class Puzzle {
     if (!legalCells(this.challenge.config.size, this.moves).some(cell => cell.row === row && cell.col === col)) {
       throw new Error("Choose an unused cell on the active row or column.");
     }
-    if (this.startedAt === null) {
-      const time = this.now();
-      if (!Number.isFinite(time)) throw new Error("Invalid clock.");
-      this.startedAt = this.lastTime = time;
-      this.status = "running";
-    }
+    this.start();
     this.moves.push({ row, col });
     const codes = this.moves.map(cell => this.challenge.matrix[cell.row][cell.col]);
     this.matched = this.challenge.targets.map(sequence =>
@@ -249,7 +256,7 @@ export class Puzzle {
     this.tick();
     if (!TERMINAL.has(this.status)) throw new Error("Puzzle has not ended.");
     return {
-      schema: 1,
+      schema: this.resultSchema,
       challengeId: this.challenge.id,
       moves: this.moves.map(cell => ({ ...cell })),
       elapsedMs: this.elapsed(),
@@ -263,20 +270,20 @@ export function replayResult(challengeInput, resultInput) {
   const challenge = validateChallenge(challengeInput);
   const result = validateResult(resultInput, challenge);
   let time = 0;
-  const puzzle = new Puzzle(challenge, { now: () => time });
+  // Retained schema-1 reports measured from the first move; new reports start on open.
+  const puzzle = new Puzzle(challenge, { now: () => time, startOnOpen: result.schema === 2 });
   for (const cell of result.moves) puzzle.select(cell.row, cell.col);
   if (result.outcome === "timeout") {
-    if (!result.moves.length || result.elapsedMs !== challenge.config.seconds * 1000) {
+    if ((result.schema === 1 && !result.moves.length) || result.elapsedMs !== challenge.config.seconds * 1000) {
       throw new Error("Timeout requires a started timer at its limit.");
     }
     time = result.elapsedMs;
     puzzle.tick();
   } else {
     if (result.elapsedMs >= challenge.config.seconds * 1000 ||
-        (!result.moves.length && result.elapsedMs !== 0)) throw new Error("Inconsistent elapsed time.");
+        (result.schema === 1 && !result.moves.length && result.elapsedMs !== 0)) throw new Error("Inconsistent elapsed time.");
     if (result.outcome === "jacked-out") puzzle.jackOut();
   }
   if (puzzle.status !== result.outcome) throw new Error("Outcome does not match legal move history.");
   return { ...result, matched: [...puzzle.matched], timingVerified: false };
 }
-import { breachConfig } from "./mechanics.mjs";

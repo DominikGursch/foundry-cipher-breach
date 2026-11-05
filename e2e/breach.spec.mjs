@@ -28,20 +28,20 @@ test("GM configuration derives DV and character values, including zero and missi
   await expect(page.locator(".cb-targets li")).toHaveCount(2);
 });
 
-test("countdown waits for first code, expires and sends one automatic partial result", async ({ page }) => {
+test("countdown starts on opening, includes time before the first code and reports once", async ({ page }) => {
   await page.clock.install();
   await page.goto("/preview/");
   await page.locator("#open").click();
   await page.locator('[type="submit"]').click();
   await expect(page.locator(".cb-time")).toHaveText("39.0s");
   await page.clock.runFor(5000);
-  await expect(page.locator(".cb-time")).toHaveText("39.0s");
+  await expect(page.locator(".cb-time")).toHaveText("34.0s");
   await expect(page.locator(".cb-cell:enabled")).toHaveCount(5);
   await page.locator(".cb-cell:enabled").first().click();
   await page.clock.runFor(3000);
-  await expect(page.locator(".cb-time")).toHaveText("36.0s");
+  await expect(page.locator(".cb-time")).toHaveText("31.0s");
   await expect(page.locator(".cb-cell:enabled")).toHaveCount(4);
-  await page.clock.runFor(36000);
+  await page.clock.runFor(31000);
   await expect(page.locator(".cb-status")).toContainText("Zeitlimit erreicht");
   await expect(page.locator("#results .cb-report")).toHaveCount(1);
   await expect(page.locator("#results .cb-report")).toContainText("0/3");
@@ -233,12 +233,56 @@ test("mobile layout remains within the viewport", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/preview/");
   await page.locator("#open").click();
-  await page.locator('[name="dv"]').selectOption("14");
+  await page.locator('[name="dv"]').selectOption("20");
   await page.locator('[type="submit"]').click();
   const dimensions = await page.locator(".cb-board").evaluate(node => ({
     client: node.clientWidth, scroll: node.scrollWidth, viewport: window.innerWidth, width: node.getBoundingClientRect().width
   }));
   expect(dimensions.scroll).toBeLessThanOrEqual(dimensions.client);
   expect(dimensions.width).toBeLessThan(dimensions.viewport);
-  await expect(page.locator(".cb-cell")).toHaveCount(49);
+  await expect(page.locator(".cb-cell")).toHaveCount(64);
+});
+
+test("DV 16-20 are available and no-move timeout is automatically reported", async ({ page }) => {
+  await page.clock.install();
+  await page.goto("/preview/");
+  await page.locator("#open").click();
+  for (const [dv, matrix, lengths] of [["16", "7 x 7", "4, 5, 5"], ["18", "8 x 8", "5, 5, 6"], ["20", "8 x 8", "5, 6, 6"]]) {
+    await page.locator('[name="dv"]').selectOption(dv);
+    await page.locator('[name="participant"]').selectOption("demo7");
+    await expect(page.locator(".cb-config .cb-metadata")).toContainText(matrix);
+    await expect(page.locator(".cb-config .cb-metadata")).toContainText(lengths);
+  }
+  await page.locator('[name="participant"]').selectOption("demo0");
+  await expect(page.locator(".cb-config .cb-metadata")).toContainText("15s");
+  await page.locator('[type="submit"]').click();
+  await expect(page.locator(".cb-cell")).toHaveCount(64);
+  await page.clock.runFor(15000);
+  await expect(page.locator("#results .cb-report")).toContainText("Zeitlimit erreicht");
+  await expect(page.locator("#results .cb-report")).toContainText("Puffer 0/4");
+  await expect(page.locator("#results .cb-report")).toHaveCount(1);
+  await expect(page.locator(".cb-link")).toHaveText("NEURALE VERBINDUNG GETRENNT");
+});
+
+test("deep-dive effects can be disabled and reduced-motion suppresses all animations", async ({ page }) => {
+  await page.clock.install();
+  await page.goto("/preview/?lang=en");
+  await page.locator("#open").click();
+  await page.locator('[type="submit"]').click();
+  const board = page.locator(".cb-board");
+  const animation = () => board.evaluate(node => getComputedStyle(node, "::after").animationName);
+  await expect(board).toHaveClass(/cb-immersive/);
+  expect(await animation()).toBe("cb-interference");
+  await page.getByRole("button", { name: "Disable screen effects" }).click();
+  await expect(board).not.toHaveClass(/cb-immersive/);
+  expect(await animation()).toBe("none");
+  await expect(page.getByRole("button", { name: "Enable screen effects" })).toHaveAttribute("aria-pressed", "false");
+  await page.getByRole("button", { name: "Enable screen effects" }).click();
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  expect(await animation()).toBe("none");
+  expect(await page.locator(".cb-link").evaluate(node => getComputedStyle(node).animationName)).toBe("none");
+  await page.clock.runFor(39000);
+  await expect(board).toHaveClass(/cb-ended/);
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  expect(await animation()).toBe("none");
 });

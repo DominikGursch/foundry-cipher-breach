@@ -8,13 +8,11 @@ Ein kostenloses, in Deutsch und Englisch verfügbares Breach-Matrixrätsel für 
 
 ## Direkt auf GitHub testen
 
-**Nach Aktivierung von GitHub Pages:** [Browser-Demo öffnen](https://dominikgursch.github.io/foundry-cipher-breach/preview/?lang=de) · [English](https://dominikgursch.github.io/foundry-cipher-breach/preview/?lang=en)
-
-Die Demo ist vorbereitet, aber Pages konnte durch die verwendete GitHub-Integration nicht aktiviert werden (HTTP 403: `Resource not accessible by integration`). Den folgenden einmaligen Einstellungsschritt muss ein Repository-Administrator im Browser vornehmen; bis dahin ist der Demo-Link nicht erreichbar.
+**[Browser-Demo öffnen](https://dominikgursch.github.io/foundry-cipher-breach/preview/?lang=de)** · [English](https://dominikgursch.github.io/foundry-cipher-breach/preview/?lang=en)
 
 1. **Cipher Breach öffnen** drücken und als SL DV, Zielanzahl, Zieltexte und einen Demo-Runner wählen.
 2. Der Interface-Rang wird aus der Beispielrolle gelesen. Matrixgröße, Puffer, Sequenzlängen und Zeit werden live berechnet; der Rang ist überschreibbar.
-3. **Rätsel starten** stellt die Einladung an den simulierten Spieler zu. Der erste gültige Code startet den Countdown.
+3. **Rätsel starten** stellt die Einladung an den simulierten Spieler zu. Sobald sich das Spielfeld öffnet, läuft der Countdown – auch ohne ersten Zug.
 4. Nach Ende erscheint unter dem Spielfenster der Spielerbericht mit erreichten und verfehlten Zielen. Das Fenster schließen, um ihn zu sehen.
 
 Die Vorschau verwendet **dieselbe Engine, dieselben UI-Komponenten und dieselben Styles** wie das Modul. Sie simuliert SL-Konfiguration, Charakterwerte, Spieleröffnung und Ergebnisanzeige in einem Browser, **nicht** Foundry-Berechtigungen, Netzwerkzustellung oder echtes Mehrspielerverhalten.
@@ -47,15 +45,21 @@ Die SL wählt **DV, bis zu drei benannte Ziele und Teilnehmer**. Bei DV 6 sind w
 
 Der Interface-Rang wird aus dem zugewiesenen Charakter gelesen: eingebettetes Item `type: "role"`, Name Netrunner bzw. `system.mainRoleAbility` mit Interface, Rang in `system.rank`. Auch Rang **0** bleibt erhalten. Fehlen Charakter oder Rolle, zeigt die Oberfläche dies ausdrücklich an und schlägt Übungsrang 4 zur Prüfung durch die SL vor. Andere Systeme können den Rang manuell angeben; kein System wird vorausgesetzt und kein Charakterwert wird geschrieben.
 
-Die SL sendet eine GM-eigene Chat-Einladung. Beim zugewiesenen Online-Spieler öffnet sich das Rätsel automatisch, **ohne bereits den Timer zu starten**. Offline-Spieler können die behaltene Chat-Einladung nach dem Wiederverbinden öffnen. Nur der Teilnehmer erhält den Spielknopf; derselbe Chat-Eintrag öffnet nicht mehrere gleichzeitige Spielfenster.
+Die SL sendet eine GM-eigene Chat-Einladung. Beim zugewiesenen Online-Spieler öffnet sich das Rätsel automatisch und **startet sofort den Timer**. Offline-Spieler können die behaltene Chat-Einladung nach dem Wiederverbinden öffnen; dann beginnt ihre Zeit. Nur der Teilnehmer erhält den Spielknopf; derselbe Chat-Eintrag öffnet nicht mehrere gleichzeitige Spielfenster.
 
 - Erster Code: oberste Zeile. Danach abwechselnd Spalte und Zeile der letzten Auswahl; keine Zelle doppelt.
-- Der Countdown beginnt beim **ersten gültigen Code**, wie in der Referenz.
+- Der Countdown beginnt **beim Öffnen des Spielfelds**, bewusst früher als in der Referenz. Abwarten zählt zur Laufzeit; ohne Zug endet der Breach ebenfalls bei Zeitablauf und wird gemeldet.
 - Ziele werden durch zusammenhängende Codes im Puffer erreicht, in beliebiger Reihenfolge; Sequenzen dürfen überlappen. Präfixfortschritt und passende nächste Codes werden hervorgehoben.
 - Ende bei allen erreichten Zielen, vollem Puffer, Zeitablauf, Sackgasse oder Ausstöpseln. Teilerfolge bleiben erhalten; alle Ziele auf dem letzten Pufferplatz zählen als voller Erfolg.
 - Beendete zugewiesene Läufe senden automatisch eine Ergebnisnachricht. Bei Sendefehlern erscheinen Fehler und ein Wiederholungs-Knopf. Schließen eines unfertigen Laufs verwirft ihn.
 
 Privater Chat geht an Teilnehmer und alle SLs, öffentlicher an alle. Die Chat-Karte zeigt Rang, DV, Zeitangabe, Pufferverbrauch und jedes Ziel. Ohne erreichtes Ziel erscheint der ICE-Hinweis; **die SL bestimmt sämtliche Folgen manuell**. Lokales Üben versendet keine Chat-Nachrichten.
+
+## Deep-Dive-Oberfläche
+
+Eigenständig gestaltetes Rot-/Schwarz-/Weiß-Terminal mit kantigen Panels, neuralem Verbindungsstatus, Scanlines und dezenten langsamen Bildschirmstörungen. Die Effekte verändern nur eine schwach transparente Ebene und die Statuszeile; Matrix und Bedienelemente bleiben ruhig und lesbar. Keine schnellen Lichtblitze oder Vollbild-Helligkeitswechsel. Unter zehn Sekunden wird die Zeit statisch rot markiert.
+
+**Bildschirmeffekte aus** schaltet die Effekte für das aktuelle Spielfenster ab. Die Systemeinstellung **Bewegung reduzieren / prefers-reduced-motion** deaktiviert alle Animationen automatisch. Beim Ende des Breachs stoppen die Animationen ebenfalls. Es werden keine offiziellen Layouts, Logos, Fonts oder Grafiken kopiert.
 
 ## Mechanik der Referenz
 
@@ -66,6 +70,11 @@ Privater Chat geht an Teilnehmer und alle SLs, öffentlicher an alle. Die Chat-K
 | 10 | 6 x 6 | 3, 3, 4 |
 | 12 | 6 x 6 | 3, 4, 4 |
 | 14 | 7 x 7 | 4, 4, 5 |
+| 16 | 7 x 7 | 4, 5, 5 |
+| 18 | 8 x 8 | 5, 5, 6 |
+| 20 | 8 x 8 | 5, 6, 6 |
+
+DV 6–14 stammen aus der Referenzmechanik; DV 16, 18 und 20 sind eine eigene Fortsetzung dieser Hausregel. Es sind weiterhin höchstens drei Ziele möglich. Die Zeit-/Pufferformeln bleiben unverändert; auch bei DV 20 gibt es mindestens 15 Sekunden. Lange Sequenzen werden bei niedrigen Rängen wie bisher auf den Puffer begrenzt.
 
 **Puffer:** `4 + Math.ceil(Interface-Rang / 2)`
 
@@ -75,7 +84,7 @@ Privater Chat geht an Teilnehmer und alle SLs, öffentlicher an alle. Die Chat-K
 
 Bei weniger Zielen werden die ersten Sequenzlängen des DV-Presets verwendet. Jede Länge wird auf die Puffergröße begrenzt. Die Engine erzeugt einen legalen, nicht wiederholten Pfad und nimmt alle Zielsequenzen daraus. Wenn die Summe der Längen nicht in den Puffer passt, werden die Starts wie im Referenzcode über den Pfad verteilt: `Math.round(index * (buffer - length) / Math.max(1, count - 1))`. Dadurch überlappen Ziele und sind gemeinsam lösbar. Ein selbst gewählter Weg kann trotzdem erfolglos sein. Der Lösungspfad wird nicht in Chat-Dokumente geschrieben.
 
-Die früheren freien Konfigurationen bleiben intern für gespeicherte Schema-1-Einladungen und deren Replay unterstützt. Neue Einladungen verwenden Schema 2 mit überprüften DV-/Rangparametern und Zielnamen.
+Die früheren freien Konfigurationen bleiben intern für gespeicherte Schema-1-Einladungen und deren Replay unterstützt. Neue Einladungen verwenden Schema 2 mit überprüften DV-/Rangparametern und Zielnamen. Neue Ergebnisberichte verwenden ebenfalls Schema 2 für die Zeit ab Spielfeldöffnung; gespeicherte Schema-1-Berichte werden weiterhin mit der alten Zeitmessung ab erstem Zug nachgespielt.
 
 ## Makros
 
@@ -130,7 +139,7 @@ gh release create v0.1.0 dist/module.json dist/foundry-cipher-breach-v0.1.0.zip 
 
 ## English
 
-An independently implemented, free Foundry v12+ matrix puzzle using the linked reference module's **house-rule DV presets and Interface formulas**, not official Cyberpunk RED Netrunning. The GM uses a terminal button to select DV, up to three named objectives and a participant; the character's Netrunner role supplies the editable rank. The assigned player's board opens automatically, its timer starts on the first legal code, and completed runs send a partial/full result through core chat. Failures stay visible and can be retried. No actor or world data is modified.
+An independently implemented, free Foundry v12+ matrix puzzle using the linked reference module's **house-rule DV presets and Interface formulas**, extended with original DV 16/18/20 presets, not official Cyberpunk RED Netrunning. The GM uses a terminal button to select DV, up to three named objectives and a participant; the character's Netrunner role supplies the editable rank. The assigned player's board opens automatically and starts its timer immediately, even without moves. Completed runs send a partial/full result through core chat. The red/black/white deep-dive terminal includes subtle optional scanline interference, respects reduced motion and never flashes the board. Failures stay visible and can be retried. No actor or world data is modified.
 
 Use the [English browser demo](https://dominikgursch.github.io/foundry-cipher-breach/preview/?lang=en) for the shared engine/UI and simulated GM/player flow. Actions provides automated checks and an installable module ZIP artifact. The demo and adapter testdouble are not real Foundry multiplayer verification. All player reports remain untrusted; the GM manually adjudicates every effect.
 

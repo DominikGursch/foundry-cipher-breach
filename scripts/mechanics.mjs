@@ -3,7 +3,10 @@ export const DV_PRESETS = Object.freeze({
   8: Object.freeze({ size: 5, lengths: Object.freeze([2, 3, 3]) }),
   10: Object.freeze({ size: 6, lengths: Object.freeze([3, 3, 4]) }),
   12: Object.freeze({ size: 6, lengths: Object.freeze([3, 4, 4]) }),
-  14: Object.freeze({ size: 7, lengths: Object.freeze([4, 4, 5]) })
+  14: Object.freeze({ size: 7, lengths: Object.freeze([4, 4, 5]) }),
+  16: Object.freeze({ size: 7, lengths: Object.freeze([4, 5, 5]) }),
+  18: Object.freeze({ size: 8, lengths: Object.freeze([5, 5, 6]) }),
+  20: Object.freeze({ size: 8, lengths: Object.freeze([5, 6, 6]) })
 });
 
 export function breachConfig({ dv = 8, rank = 4, targetCount = DV_PRESETS[dv]?.lengths.length } = {}) {

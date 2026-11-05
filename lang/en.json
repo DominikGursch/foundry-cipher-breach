@@ -5,7 +5,7 @@
     "menuHint": "Practice locally or, as GM, send a code-matrix challenge to a player.",
     "close": "Close",
     "houseRule": "Optional home rule / original matrix puzzle. Not official RED Netrunning.",
-    "rules": "Start in the top row. Then alternate the last cell's column and row. Each cell can be used once. Fill all target sequences contiguously in your buffer, in any order. The timer starts with your first legal selection.",
+    "rules": "Start in the top row. Then alternate the last cell's column and row. Each cell can be used once. Fill all target sequences contiguously in your buffer, in any order. The timer starts as soon as the board opens, even without a move.",
     "matrix": "Code matrix",
     "buffer": "Buffer",
     "targets": "Target sequences",
@@ -15,7 +15,7 @@
     "activeRow": "Select on the active row",
     "activeColumn": "Select on the active column",
     "ready": "Ready. Select a cell in the top row to start.",
-    "running": "Connection active.",
+    "running": "Deep dive active. Countdown running.",
     "won": "All targets matched.",
     "timeout": "Time limit reached.",
     "full-buffer": "Buffer full. Not all targets matched.",
@@ -68,7 +68,11 @@
     "instructions": "How to play",
     "previewHint": "Browser simulation: configure as GM, launch for a sample character, then play as that participant. Results appear below. No Foundry server or real multiplayer is simulated.",
     "previewRunner": "Demo runner",
-    "previewLaunched": "GM invitation delivered. The assigned player can now start with the first code.",
-    "previewResult": "Player report / GM view"
+    "previewLaunched": "GM invitation delivered. The board is open; the countdown is already running.",
+    "previewResult": "Player report / GM view",
+    "deepDive": "DEEP DIVE / NEURAL LINK ACTIVE",
+    "linkClosed": "NEURAL LINK DISCONNECTED",
+    "effectsOff": "Disable screen effects",
+    "effectsOn": "Enable screen effects"
   }
 }

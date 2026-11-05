@@ -35,7 +35,15 @@ function dialog(title, t) {
 export function openBoard(challenge, { t, onSubmit = null, onError = console.error } = {}) {
   const puzzle = new Puzzle(challenge);
   const root = dialog("Cipher Breach", t);
-  root.classList.add("cb-board");
+  root.classList.add("cb-board", "cb-immersive");
+  const effects = button(t("effectsOff"), () => {
+    const enabled = root.classList.toggle("cb-immersive");
+    effects.textContent = t(enabled ? "effectsOff" : "effectsOn");
+    effects.setAttribute("aria-pressed", String(enabled));
+  }, "cb-effects");
+  effects.setAttribute("aria-pressed", "true");
+  const link = element("span", { className: "cb-link", text: t("deepDive") });
+  root.append(element("div", { className: "cb-uplink" }, [link, effects]));
   root.append(element("p", { className: "cb-eyebrow", text: t("houseRule") }));
   const config = puzzle.challenge.config;
   if (config.mode === "netrun") root.append(element("p", {
@@ -151,6 +159,8 @@ export function openBoard(challenge, { t, onSubmit = null, onError = console.err
     if (status.textContent !== statusText) status.textContent = statusText;
     root.classList.toggle("cb-ended", ended);
     root.classList.toggle("cb-failed", ended && !puzzle.matched.some(Boolean));
+    root.classList.toggle("cb-critical", !ended && remaining <= 10);
+    link.textContent = t(ended ? "linkClosed" : "deepDive");
     const legal = new Set(legalCells(puzzle.challenge.config.size, puzzle.moves).map(cell => `${cell.row}:${cell.col}`));
     for (let row = 0; row < cells.length; row++) {
       for (let col = 0; col < cells[row].length; col++) {

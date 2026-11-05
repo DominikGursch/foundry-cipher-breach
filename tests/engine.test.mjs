@@ -62,10 +62,10 @@ test("first move top row, alternating column/row, and no cell reuse", () => {
   ]);
 });
 
-test("timer starts only on first legal selection, deadline is exclusive, terminal time is frozen", () => {
+test("legacy timer starts on first legal selection and old reports remain replayable", () => {
   let time = 100;
   const { challenge } = fixture();
-  const puzzle = new Puzzle(challenge, { now: () => time });
+  const puzzle = new Puzzle(challenge, { now: () => time, startOnOpen: false });
   time = 10000;
   assert.equal(puzzle.elapsed(), 0);
   assert.throws(() => puzzle.select(1, 0));
@@ -196,10 +196,51 @@ test("replay rejects forged IDs, illegal/repeated moves, impossible states and e
   assert.throws(() => replayResult(challenge, { ...result, outcome: "won" }));
   assert.throws(() => replayResult(challenge, { ...result, outcome: "timeout", elapsedMs: 59999 }));
   assert.throws(() => replayResult(challenge, { ...result, elapsedMs: 60000 }));
-  assert.throws(() => replayResult(challenge, { ...result, moves: [], elapsedMs: 1 }));
+  assert.throws(() => replayResult(challenge, { ...result, schema: 1, moves: [], elapsedMs: 1 }));
   assert.throws(() => validateResult({ ...result, moves: Array(1) }, challenge));
   for (const elapsedMs of [-1, "0", Infinity, 1.5, 60001]) {
     assert.throws(() => validateResult({ ...result, elapsedMs }, challenge));
   }
   assert.throws(() => replayResult(challenge, { ...result, outcome: "<img>" }));
+});
+
+test("new countdown starts on open, includes deliberation and can expire without moves", () => {
+  const { challenge } = fixture();
+  let time = 100;
+  const puzzle = new Puzzle(challenge, { now: () => time });
+  assert.equal(puzzle.status, "running");
+  assert.equal(puzzle.startedAt, 100);
+  time += 1000;
+  assert.equal(puzzle.elapsed(), 1000);
+  assert.throws(() => puzzle.select(1, 0));
+  assert.equal(puzzle.startedAt, 100);
+  time += 58999;
+  assert.equal(puzzle.tick(), "running");
+  time++;
+  assert.equal(puzzle.tick(), "timeout");
+  assert.throws(() => puzzle.select(0, 0), /ended/);
+  const result = puzzle.result();
+  assert.equal(result.schema, 2);
+  assert.deepEqual(result.moves, []);
+  assert.equal(replayResult(challenge, result).outcome, "timeout");
+  assert.throws(() => replayResult(challenge, { ...result, schema: 1 }));
+  time += 10000;
+  assert.equal(puzzle.elapsed(), 60000);
+});
+
+test("new no-move jack out includes elapsed time; first selection never resets the clock", () => {
+  const { challenge } = fixture();
+  let time = 100;
+  const puzzle = new Puzzle(challenge, { now: () => time });
+  time += 1500;
+  puzzle.jackOut();
+  assert.equal(replayResult(challenge, puzzle.result()).elapsedMs, 1500);
+  const started = new Puzzle(challenge, { now: () => time });
+  time += 1000;
+  started.select(0, 0);
+  assert.equal(started.elapsed(), 1000);
+  time += 500;
+  started.jackOut();
+  assert.equal(replayResult(challenge, started.result()).elapsedMs, 1500);
+  assert.throws(() => new Puzzle(challenge, { now: () => NaN }), /clock/);
 });

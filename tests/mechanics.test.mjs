@@ -11,7 +11,10 @@ function seeded(seed) {
 }
 
 test("exact reference DV presets and rank formulas, including zero and the 15s floor", () => {
-  const expected = [[6, 5, [2, 3]], [8, 5, [2, 3, 3]], [10, 6, [3, 3, 4]], [12, 6, [3, 4, 4]], [14, 7, [4, 4, 5]]];
+  const expected = [
+    [6, 5, [2, 3]], [8, 5, [2, 3, 3]], [10, 6, [3, 3, 4]], [12, 6, [3, 4, 4]],
+    [14, 7, [4, 4, 5]], [16, 7, [4, 5, 5]], [18, 8, [5, 5, 6]], [20, 8, [5, 6, 6]]
+  ];
   for (const [dv, size, lengths] of expected) {
     for (let rank = 0; rank <= 10; rank++) {
       const config = breachConfig({ dv, rank });
@@ -23,6 +26,7 @@ test("exact reference DV presets and rank formulas, including zero and the 15s f
     }
   }
   assert.equal(breachConfig({ dv: 14, rank: 0 }).seconds, 17);
+  assert.equal(breachConfig({ dv: 20, rank: 0 }).seconds, 15);
   assert.equal(breachConfig({ dv: 8, rank: 7 }).buffer, 8);
 });
 
@@ -72,7 +76,7 @@ test("Interface extraction matches RED role data, preserves zero, distinguishes 
 });
 
 test("DV/rank/schema tampering and malformed objective names fail explicitly", () => {
-  for (const dv of [0, 7, 16, "8", NaN]) assert.throws(() => breachConfig({ dv }));
+  for (const dv of [0, 7, 19, 21, 22, "8", NaN]) assert.throws(() => breachConfig({ dv }));
   for (const rank of [-1, 11, 1.5, "4", null]) assert.throws(() => breachConfig({ rank }));
   assert.throws(() => breachConfig({ dv: 6, targetCount: 3 }));
   for (const targetCount of [0, 4, "2", null]) assert.throws(() => breachConfig({ targetCount }));
@@ -97,15 +101,15 @@ test("partial achievement, dead ends and the countdown are preserved in reports"
   challenge.targets = [["0A", "0A"], ["5D", "5D", "5D"], ["1C", "1C", "1C"]];
   let time = 1000;
   const puzzle = new Puzzle(challenge, { now: () => time });
-  time += 100000;
-  assert.equal(puzzle.elapsed(), 0);
+  time += 1000;
+  assert.equal(puzzle.elapsed(), 1000);
   puzzle.select(0, 0);
   time += 250;
   puzzle.select(1, 0);
   assert.deepEqual(puzzle.matched, [true, false, false]);
   puzzle.jackOut();
   assert.deepEqual(replayResult(challenge, puzzle.result()).matched, [true, false, false]);
-  assert.equal(puzzle.result().elapsedMs, 250);
+  assert.equal(puzzle.result().elapsedMs, 1250);
   const stuck = generateChallenge(breachConfig({ dv: 6, rank: 10, targetCount: 1 })).challenge;
   stuck.matrix = stuck.matrix.map(row => row.map(() => "0A"));
   stuck.targets = [["5D", "5D"]];
