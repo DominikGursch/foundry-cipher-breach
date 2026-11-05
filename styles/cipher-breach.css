@@ -1,13 +1,13 @@
 .cipher-breach {
-  --cb-bg: #100d10;
-  --cb-panel: #211b20;
-  --cb-ink: #faf2f2;
-  --cb-muted: #c2b5ba;
-  --cb-accent: #ff5265;
-  --cb-warm: #faf2f2;
-  --cb-line: #76515b;
-  --cb-success: #93ddbd;
-  color-scheme: dark;
+  --cb-bg: #ebebeb;
+  --cb-panel: #dedede;
+  --cb-ink: #111;
+  --cb-muted: #454545;
+  --cb-accent: #b40000;
+  --cb-warm: #111;
+  --cb-line: #a70000;
+  --cb-success: #26704d;
+  color-scheme: light;
   box-sizing: border-box;
   color: var(--cb-ink);
   background: var(--cb-bg);
@@ -18,14 +18,14 @@
   max-height: calc(100vh - 32px);
   overflow: auto;
   font: 14px/1.5 ui-monospace, Consolas, monospace;
-  background-image: linear-gradient(135deg, #ff526508, transparent 45%);
   box-shadow: 0 24px 80px #000d, 0 0 30px #ff526512;
 }
 .cipher-breach::backdrop { background: #080509dc; }
 .cipher-breach *, .cipher-breach *::before, .cipher-breach *::after { box-sizing: border-box; }
-.cipher-breach header { display: flex; align-items: center; gap: 16px; padding: 12px; border-left: 6px solid var(--cb-accent); border-bottom: 1px solid var(--cb-accent); background: #37141d; }
+.cipher-breach header { display: flex; align-items: center; gap: 16px; padding: 12px; border-left: 6px solid var(--cb-accent); border-bottom: 1px solid var(--cb-accent); background: #222; }
 .cipher-breach h2, .cipher-breach h3 { font-family: inherit; color: var(--cb-ink); border: 0; }
-.cipher-breach h2 { font-size: 20px; margin: 0; letter-spacing: .1em; flex: 1; text-transform: uppercase; }
+.cipher-breach h2 { font-size: 20px; margin: 0; letter-spacing: .1em; flex: 1; text-transform: uppercase; color: #ededed; }
+.cipher-breach .cb-close { color: #ededed; background: #222; border-color: #aaa; }
 .cipher-breach h3 { font-size: 14px; text-transform: uppercase; letter-spacing: .12em; margin: 0 0 12px; color: var(--cb-warm); }
 .cipher-breach p { margin: 12px 0; }
 .cipher-breach .cb-wordmark { color: var(--cb-accent); font: 13px ui-monospace, monospace; }
@@ -44,7 +44,7 @@
   border: 1px solid var(--cb-line); border-radius: 0; padding: 8px 12px;
   box-shadow: none; width: auto; line-height: 1.4; margin: 0;
 }
-.cipher-breach button:hover:not(:disabled) { background: #481c28; border-color: var(--cb-accent); }
+.cipher-breach button:hover:not(:disabled) { background: #c7c7c7; border-color: var(--cb-accent); }
 .cipher-breach button:focus-visible, .cipher-breach input:focus-visible, .cipher-breach select:focus-visible {
   outline: 3px solid var(--cb-warm); outline-offset: 3px;
 }
@@ -53,19 +53,19 @@
 .cipher-breach .cb-cell.cb-active { color: var(--cb-ink); background: #ff52651a; border-color: #ff52657a; }
 .cipher-breach .cb-cell.cb-active:hover { background: var(--cb-accent); color: var(--cb-bg); box-shadow: 0 0 14px #ff526544; }
 .cipher-breach .cb-cell.cb-visited { color: var(--cb-muted); opacity: .35; }
-.cipher-breach .cb-primary { color: var(--cb-bg); background: var(--cb-accent); font-weight: bold; }
-.cipher-breach .cb-primary:hover:not(:disabled) { color: var(--cb-ink); }
+.cipher-breach .cb-primary { color: #fff; background: var(--cb-accent); font-weight: bold; }
+.cipher-breach .cb-primary:hover:not(:disabled) { color: #fff; background: #850000; }
 .cipher-breach .cb-targets { list-style: none; margin: 0 0 24px; padding: 0; }
 .cipher-breach .cb-targets li { padding: 10px; margin-bottom: 8px; background: var(--cb-panel); border-left: 3px solid var(--cb-line); overflow-wrap: anywhere; }
 .cipher-breach .cb-sequence { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
 .cipher-breach .cb-targets code { color: var(--cb-muted); background: none; border: 1px solid var(--cb-line); padding: 3px 5px; font: bold 16px ui-monospace, monospace; }
 .cipher-breach .cb-targets code.cb-next { color: var(--cb-warm); border-color: var(--cb-warm); }
-.cipher-breach .cb-targets code.cb-progress { background: var(--cb-accent); color: var(--cb-bg); }
+.cipher-breach .cb-targets code.cb-progress { background: var(--cb-accent); color: #fff; }
 .cipher-breach .cb-targets code.cb-highlight { background: var(--cb-warm); color: var(--cb-bg); }
 .cipher-breach .cb-targets span { display: block; color: var(--cb-muted); font-size: 12px; }
 .cipher-breach .cb-targets .cb-matched { border-color: var(--cb-success); }
 .cipher-breach .cb-matched code.cb-progress { background: var(--cb-success); }
-.cipher-breach .cb-targets .cb-missed { border-color: #e89b9b; opacity: .7; }
+.cipher-breach .cb-targets .cb-missed { border-color: var(--cb-accent); opacity: .7; }
 .cipher-breach .cb-buffer { display: flex; flex-wrap: wrap; list-style: none; gap: 6px; margin: 0 0 24px; padding: 0; }
 .cipher-breach .cb-buffer li { border: 1px dashed var(--cb-line); padding: 7px; min-width: 36px; text-align: center; font-family: ui-monospace, monospace; }
 .cipher-breach .cb-buffer .cb-filled { border-style: solid; color: var(--cb-warm); }
@@ -73,7 +73,7 @@
 .cipher-breach.cb-ended header { border-color: var(--cb-success); }
 .cipher-breach.cb-failed header { border-color: #e89b9b; }
 .cipher-breach.cb-failed .cb-status { color: #e89b9b; }
-.cipher-breach .cb-error { color: #ffd3b7; }
+.cipher-breach .cb-error { color: #9b0000; }
 .cipher-breach footer { display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px; }
 .cipher-breach .cb-config { display: grid; gap: 12px; }
 .cipher-breach label { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 12px; }
@@ -92,13 +92,13 @@
 .cipher-breach .cb-workspace > section { min-width: 0; }
 .cipher-breach.cb-board {
   padding: 0;
-  border-color: #72333e;
-  background: #080a0f;
-  background-image: repeating-linear-gradient(0deg, #ffffff03 0 1px, transparent 1px 4px);
+  border: 6px solid #ebebeb;
+  background: #b40000;
+  color-scheme: dark;
 }
 .cipher-breach.cb-board header {
   gap: 12px; flex-wrap: wrap; padding: 12px 18px;
-  background: #bd2039; border: 0; color: #fff5f5;
+  background: #222; border: 0; border-bottom: 4px solid #ebebeb; color: #ededed;
 }
 .cipher-breach.cb-board h2 { flex: 0 1 auto; font-size: 15px; color: #fff5f5; }
 .cipher-breach .cb-board-meta { font-size: 13px; font-weight: bold; }
@@ -107,13 +107,13 @@
 .cipher-breach.cb-board progress { width: 110px; height: 8px; accent-color: #fff5f5; }
 .cipher-breach.cb-board .cb-close { background: transparent; border-color: #ffffff60; padding: 3px 7px; font-size: 11px; }
 .cipher-breach.cb-board .cb-workspace { gap: 22px; padding: 18px; }
-.cipher-breach.cb-board h3 { font-size: 14px; color: var(--cb-accent); letter-spacing: .16em; }
-.cipher-breach.cb-board h3 small { margin-left: 10px; color: var(--cb-ink); font-size: 12px; letter-spacing: 0; }
+.cipher-breach.cb-board h3 { font-size: 14px; color: #ededed; background: #111; padding: 4px 8px; letter-spacing: .12em; }
+.cipher-breach.cb-board h3 small { margin-left: 10px; color: #ededed; font-size: 12px; letter-spacing: 0; }
 .cipher-breach.cb-board .cb-objectives { display: flex; flex-direction: column; }
 .cipher-breach.cb-board .cb-matrix {
   position: relative; isolation: isolate; overflow: hidden;
-  background: radial-gradient(ellipse at center, #14212a 0, #090e15 75%);
-  border: 1px solid #82303f; box-shadow: inset 0 0 28px #000c;
+  background: radial-gradient(ellipse at center, #222 0, #0c0c0c 75%);
+  border: 2px solid #ebebeb; box-shadow: inset 0 0 28px #000c;
   gap: 4px;
 }
 .cipher-breach.cb-board .cb-matrix::before,
@@ -136,24 +136,29 @@
 }
 .cipher-breach.cb-board .cb-cell:disabled { opacity: .65; }
 .cipher-breach.cb-board .cb-cell.cb-visited { opacity: .28; }
-.cipher-breach.cb-board .cb-cell.cb-active { color: #fff1f3; background: #bc244023; border-color: #dd375258; }
-.cipher-breach.cb-board .cb-cell.cb-active:hover { color: #fff; background: #be243c; box-shadow: 0 0 14px #ff526559; }
-.cipher-breach.cb-board .cb-axis { color: #a3aebb; font-size: 12px; margin: 8px 0 0; }
+.cipher-breach.cb-board .cb-cell.cb-active { color: #fff; background: #b400002b; border-color: #b40000; }
+.cipher-breach.cb-board .cb-cell.cb-active:hover { color: #fff; background: #b40000; box-shadow: 0 0 14px #b4000059; }
+.cipher-breach.cb-board .cb-axis { color: #ededed; font-size: 12px; margin: 8px 0 0; }
 .cipher-breach.cb-board .cb-targets { margin-bottom: 0; }
 .cipher-breach.cb-board .cb-targets li {
   display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 5px 10px; align-items: center;
-  padding: 10px; border: 1px solid #603342; background: #121119;
+  padding: 10px; border: 2px solid #ebebeb; background: #ebebeb;
 }
 .cipher-breach.cb-board .cb-sequence { margin: 0; }
 .cipher-breach.cb-board .cb-targets strong { font-size: 12px; line-height: 1.3; }
+.cipher-breach.cb-board .cb-targets code.cb-highlight { background: #222; color: #fff; }
 .cipher-breach.cb-board .cb-target-status { grid-column: 1 / -1; color: var(--cb-success); text-transform: uppercase; letter-spacing: .14em; }
 .cipher-breach.cb-board .cb-target-status:empty { display: none; }
-.cipher-breach.cb-board .cb-targets .cb-matched { border-color: var(--cb-success); background: #93ddbd0a; }
+.cipher-breach.cb-board .cb-targets .cb-matched { border-color: #153e2b; background: #dcece2; }
+.cipher-breach.cb-board .cb-matched code.cb-progress { color: #fff; }
 .cipher-breach.cb-board .cb-targets .cb-missed { border-color: var(--cb-accent); }
-.cipher-breach.cb-board .cb-buffer li { color: var(--cb-accent); min-width: 34px; padding: 6px; }
+.cipher-breach.cb-board .cb-buffer li { color: #111; background: #ebebeb; border-color: #111; min-width: 34px; padding: 6px; }
+.cipher-breach.cb-board .cb-status { color: #fff; }
+.cipher-breach.cb-board .cb-error { color: #fff; padding: 8px; background: #222; }
 .cipher-breach.cb-board .cb-error:empty { display: none; }
 .cipher-breach.cb-board footer { margin-top: 14px; }
-.cipher-breach.cb-board .cb-jack { width: 100%; text-transform: uppercase; letter-spacing: .15em; color: var(--cb-accent); border-color: var(--cb-accent); }
+.cipher-breach.cb-board .cb-jack { width: 100%; text-transform: uppercase; letter-spacing: .15em; color: #ededed; background: #222; border: 2px solid #ebebeb; }
+.cipher-breach.cb-board .cb-jack:hover:not(:disabled) { color: #111; background: #ebebeb; }
 .cipher-breach.cb-critical .cb-time { text-decoration: underline; }
 /* Subtle overlays simulate noise; code cells and controls never flicker or move. */
 @keyframes cb-noise {

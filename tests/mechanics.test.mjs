@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { breachConfig, DV_PRESETS, interfaceRank } from "../scripts/mechanics.mjs";
-import { Puzzle, generateChallenge, replayResult, validateChallenge, validateConfig } from "../scripts/engine.mjs";
+import { HARD_SYMBOLS, Puzzle, generateChallenge, legalCells, replayResult, validateChallenge, validateConfig } from "../scripts/engine.mjs";
 
 function seeded(seed) {
   return () => {
@@ -30,8 +30,8 @@ test("exact reference DV presets and rank formulas, including zero and the 15s f
   assert.equal(breachConfig({ dv: 8, rank: 7 }).buffer, 8);
 });
 
-test("every DV/rank/objective count has a joint legal solution with overlapping reference placement", () => {
-  for (const dv of Object.keys(DV_PRESETS).map(Number)) {
+test("reference DVs retain jointly solvable overlapping targets", () => {
+  for (const dv of Object.keys(DV_PRESETS).map(Number).filter(dv => dv <= 14)) {
     for (let rank = 0; rank <= 10; rank++) {
       for (let targetCount = 1; targetCount <= DV_PRESETS[dv].lengths.length; targetCount++) {
         for (let seed = 0; seed < 20; seed++) {
@@ -60,6 +60,89 @@ test("every DV/rank/objective count has a joint legal solution with overlapping 
       }
     }
   }
+});
+
+test("high DVs have distinct individually solvable routes and misleading first-code entries", () => {
+  for (const dv of [16, 18, 20]) {
+    for (let rank = 0; rank <= 10; rank++) {
+      for (let targetCount = 1; targetCount <= 3; targetCount++) {
+        for (let seed = 0; seed < 20; seed++) {
+          const config = breachConfig({ dv, rank, targetCount });
+          const generated = generateChallenge(config, { rng: seeded(seed) });
+          const { challenge, solutions, decoys } = generated;
+          assert.deepEqual(generated, generateChallenge(config, { rng: seeded(seed) }));
+          assert.equal(new Set(challenge.targets.map(sequence => sequence.join("-"))).size, targetCount);
+          assert.ok(challenge.matrix.flat().every(code => HARD_SYMBOLS.includes(code)));
+          assert.ok(challenge.matrix.flat().some(code => !["0A", "1C", "2E", "3F", "4B", "5D"].includes(code)));
+          assert.equal(challenge.solutions, undefined);
+          assert.equal(challenge.decoys, undefined);
+          solutions.forEach((path, index) => {
+            assert.equal(path.length, config.sequenceLengths[index]);
+            const puzzle = new Puzzle(challenge, { now: () => 0 });
+            for (const cell of path) {
+              assert.ok(legalCells(config.size, puzzle.moves).some(move => move.row === cell.row && move.col === cell.col));
+              puzzle.select(cell.row, cell.col);
+            }
+            assert.equal(puzzle.matched[index], true);
+            puzzle.jackOut();
+            assert.equal(replayResult(challenge, puzzle.result()).matched[index], true);
+            const decoy = decoys[index];
+            assert.equal(challenge.matrix[decoy.row][decoy.col], challenge.targets[index][0]);
+            assert.notEqual(decoy.col, path[0].col);
+            const next = legalCells(config.size, [decoy]);
+            assert.ok(next.length > 0);
+            assert.ok(next.every(cell => !challenge.targets.some(sequence => challenge.matrix[cell.row][cell.col] === sequence[1])));
+          });
+        }
+      }
+    }
+  }
+});
+
+test("DV20 rank zero cannot win all three objectives; misleading entries cannot complete any objective", () => {
+  function reachable(challenge, sequence, moves = []) {
+    if (moves.length === sequence.length) return true;
+    return legalCells(challenge.config.size, moves).some(cell =>
+      challenge.matrix[cell.row][cell.col] === sequence[moves.length] &&
+      reachable(challenge, sequence, [...moves, cell]));
+  }
+  for (let seed = 0; seed < 100; seed++) {
+    const { challenge, solutions, decoys } = generateChallenge(breachConfig({ dv: 20, rank: 0 }), { rng: seeded(seed) });
+    assert.equal(challenge.config.seconds, 15);
+    assert.equal(challenge.config.buffer, 4);
+    assert.deepEqual(challenge.targets.map(sequence => sequence.length), [4, 4, 4]);
+    assert.equal(new Set(challenge.targets.map(sequence => sequence.join("-"))).size, 3);
+    // Four slots hold exactly one length-four sequence, so distinct targets cannot all match.
+    for (const path of solutions) {
+      const puzzle = new Puzzle(challenge, { now: () => 0 });
+      for (const cell of path) puzzle.select(cell.row, cell.col);
+      assert.equal(puzzle.status, "full-buffer");
+      assert.equal(puzzle.matched.filter(Boolean).length, 1);
+    }
+    for (const decoy of decoys) {
+      assert.ok(challenge.targets.every(sequence =>
+        sequence[0] !== challenge.matrix[0][decoy.col] || !reachable(challenge, sequence, [decoy])));
+    }
+  }
+});
+
+test("saved high-DV puzzles with the original alphabet and identical targets still replay unchanged", () => {
+  const { challenge: original, solution } = generateChallenge({
+    size: 8, buffer: 4, targetCount: 1, sequenceLength: 4, seconds: 15
+  }, { rng: seeded(42) });
+  const challenge = validateChallenge({
+    ...original, schema: 2, config: breachConfig({ dv: 20, rank: 0 }),
+    targets: Array.from({ length: 3 }, () => [...original.targets[0]]), names: ["Password", "Data", "Node"]
+  });
+  const puzzle = new Puzzle(challenge, { now: () => 0 });
+  for (const cell of solution) puzzle.select(cell.row, cell.col);
+  assert.equal(puzzle.status, "won");
+  assert.ok(replayResult(challenge, puzzle.result()).matched.every(Boolean));
+  const lower = generateChallenge(breachConfig({ dv: 8 })).challenge;
+  lower.matrix[0][0] = "CD";
+  assert.throws(() => validateChallenge(lower));
+  challenge.matrix[0][0] = "ZZ";
+  assert.throws(() => validateChallenge(challenge));
 });
 
 test("Interface extraction matches RED role data, preserves zero, distinguishes missing role", () => {

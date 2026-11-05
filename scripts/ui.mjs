@@ -239,10 +239,13 @@ export function openConfiguration({
   ]);
   if (isGM) form.append(element("label", {}, [element("span", { text: t("visibility") }), visibility]));
   form.append(element("p", { className: "cb-note", text: t("configHint") }));
+  const hardHint = element("p", { className: "cb-note", text: t("hardHint") });
+  form.append(hardHint);
   const errorNode = element("p", { className: "cb-error", attributes: { role: "alert" } });
   function update() {
     try {
       const config = breachConfig({ dv: Number(dv.value), rank: Number(rank.value), targetCount: Number(targetCount.value) });
+      hardHint.hidden = config.dv < 16;
       nameLabels.forEach((label, index) => {
         label.hidden = index >= config.targetCount;
         names[index].required = index < config.targetCount;

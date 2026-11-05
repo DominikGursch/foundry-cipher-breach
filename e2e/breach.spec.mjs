@@ -287,3 +287,53 @@ test("compact hack monitor omits helper controls and keeps noise active, respect
   await page.emulateMedia({ reducedMotion: "no-preference" });
   expect(await animation()).toBe("cb-interference");
 });
+
+test("DV20 rank zero decoy fails while a real route reports exactly one achieved objective", async ({ page }) => {
+  await page.goto("/preview/?lang=en");
+  await page.evaluate(async () => {
+    const { generateChallenge, replayResult } = await import("/scripts/engine.mjs");
+    const { breachConfig } = await import("/scripts/mechanics.mjs");
+    const { openBoard } = await import("/scripts/ui.mjs");
+    const strings = (await (await fetch("/lang/en.json")).json()).CB;
+    let seed = 42;
+    const rng = () => {
+      seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+      return seed / 4294967296;
+    };
+    window.generated = generateChallenge(breachConfig({ dv: 20, rank: 0 }), { rng });
+    window.reports = [];
+    window.openTestBoard = () => openBoard(window.generated.challenge, {
+      t: key => strings[key],
+      onSubmit: async data => window.reports.push(replayResult(window.generated.challenge, data))
+    });
+    window.openTestBoard();
+  });
+  const decoy = await page.evaluate(() => window.generated.decoys[0]);
+  await page.locator(".cb-cell").nth(decoy.col).click();
+  await expect(page.locator(".cb-next")).toHaveCount(3);
+  for (let step = 1; step < 4; step++) await page.locator(".cb-cell:enabled").first().click();
+  await expect.poll(() => page.evaluate(() => window.reports.length)).toBe(1);
+  expect(await page.evaluate(() => window.reports[0].matched.filter(Boolean).length)).toBe(0);
+  expect(await page.evaluate(() => window.reports[0].outcome)).toBe("full-buffer");
+  await page.locator(".cb-close").click();
+  await page.evaluate(() => window.openTestBoard());
+  const solution = await page.evaluate(() => window.generated.solutions[0]);
+  for (const cell of solution) await page.locator(".cb-cell").nth(cell.row * 8 + cell.col).click();
+  await expect.poll(() => page.evaluate(() => window.reports.length)).toBe(2);
+  expect(await page.evaluate(() => window.reports[1].matched.filter(Boolean).length)).toBe(1);
+  await expect(page.locator(".cb-matched")).toHaveCount(1);
+  await expect(page.locator(".cb-status")).toContainText("Buffer full");
+});
+
+test("Foundry RED palette uses dark red, light gray targets and black separators", async ({ page }) => {
+  await page.goto("/preview/");
+  await page.locator("#open").click();
+  await page.locator('[name="dv"]').selectOption("20");
+  await expect(page.locator(".cb-config")).toContainText("höchstens eines von drei Zielen");
+  await page.locator('[type="submit"]').click();
+  const color = selector => page.locator(selector).first().evaluate(node => getComputedStyle(node).backgroundColor);
+  expect(await color(".cb-board")).toBe("rgb(180, 0, 0)");
+  expect(await color(".cb-targets li")).toBe("rgb(235, 235, 235)");
+  expect(await color(".cb-board h3")).toBe("rgb(17, 17, 17)");
+  expect(await page.locator(".cb-targets strong").first().evaluate(node => getComputedStyle(node).color)).toBe("rgb(17, 17, 17)");
+});

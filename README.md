@@ -57,7 +57,7 @@ Privater Chat geht an Teilnehmer und alle SLs, öffentlicher an alle. Die Chat-K
 
 ## Deep-Dive-Oberfläche
 
-Eigenständig gestaltetes Rot-/Schwarz-/Weiß-Terminal: kompakte Kopfzeile mit DV, Interface und Countdown; links die Code-Matrix als Monitor, rechts Puffer, Ziele und Ausstöpseln. Keine Hausregelhinweise, Spielanleitung, Effekt-Schalter oder Senden-Knöpfe im Spielfeld. Lizenz- und Vertrauensinformationen bleiben in Dokumentation und Chat erhalten.
+Eigenständig gestaltetes Terminal in den Farben des Foundry-RED-Screenshots: kräftiges Dunkelrot, hellgraue Zielflächen und schwarze Trennleisten. Kompakte Kopfzeile mit DV, Interface und Countdown; links die dunkle Code-Matrix als Monitor, rechts Puffer, Ziele und Ausstöpseln. Keine Hausregelhinweise, Spielanleitung, Effekt-Schalter oder Senden-Knöpfe im Spielfeld. Lizenz- und Vertrauensinformationen bleiben in Dokumentation und Chat erhalten.
 
 Scanlines, schwaches Bildrauschen und eine langsame Monitorstörung sind immer aktiv, auch im Ergebnisbild. Sie verändern nur transparente Ebenen über der Matrix; Codes und Bedienelemente bewegen sich nicht. Keine schnellen Lichtblitze oder Vollbild-Helligkeitswechsel. Die Systemeinstellung **Bewegung reduzieren / prefers-reduced-motion** unterdrückt die Animationen weiterhin und behält die statische Monitorstruktur. Es werden keine offiziellen Layouts, Logos, Fonts oder Grafiken kopiert.
 
@@ -82,7 +82,15 @@ DV 6–14 stammen aus der Referenzmechanik; DV 16, 18 und 20 sind eine eigene Fo
 
 **Interface-Rang:** ganze Zahl von 0 bis 10.
 
-Bei weniger Zielen werden die ersten Sequenzlängen des DV-Presets verwendet. Jede Länge wird auf die Puffergröße begrenzt. Die Engine erzeugt einen legalen, nicht wiederholten Pfad und nimmt alle Zielsequenzen daraus. Wenn die Summe der Längen nicht in den Puffer passt, werden die Starts wie im Referenzcode über den Pfad verteilt: `Math.round(index * (buffer - length) / Math.max(1, count - 1))`. Dadurch überlappen Ziele und sind gemeinsam lösbar. Ein selbst gewählter Weg kann trotzdem erfolglos sein. Der Lösungspfad wird nicht in Chat-Dokumente geschrieben.
+Bei weniger Zielen werden die ersten Sequenzlängen des DV-Presets verwendet. Jede Länge wird auf die Puffergröße begrenzt.
+
+**DV 6–14:** Die Engine erzeugt einen legalen, nicht wiederholten Pfad und nimmt alle Zielsequenzen daraus. Wenn die Summe der Längen nicht in den Puffer passt, werden die Starts wie im Referenzcode über den Pfad verteilt: `Math.round(index * (buffer - length) / Math.max(1, count - 1))`. Dadurch überlappen Ziele und sind gemeinsam lösbar. Ein selbst gewählter Weg kann trotzdem erfolglos sein.
+
+**DV 16–20:** Zwölf statt sechs Codes und getrennte, unterschiedliche Zielrouten. Jedes Ziel besitzt einen eigenen legalen Weg innerhalb des Puffers; **alle Ziele gemeinsam sind nicht garantiert erreichbar**. Die Entscheidung, welche Belohnung verfolgt wird, gehört zur Schwierigkeit. Zusätzlich bekommt jedes Ziel einen irreführenden Einstieg in der obersten Zeile: gleicher erster Code, aber in dessen Spalte fehlt der zweite Zielcode. Diese Einstiege sind Sequenz-Sackgassen, keine gesperrten Zellen; andere legale Züge bleiben erlaubt, verbrauchen aber den knappen Puffer.
+
+Der bisherige Sonderfall bei **DV20 / Interface 0** ist beseitigt: drei Ziele mit jeweils vier Codes sind nun unterschiedlich statt identisch. Ein Vierer-Puffer kann somit höchstens eines davon erreichen, nicht mit vier Klicks automatisch alle drei. Zeit und Puffer bleiben charakterabhängig; ein einzelnes Ziel bleibt bewusst möglich. Bei höheren Rängen können nach einem Fehlstart neue Sequenzen begonnen werden, solange genug Puffer übrig ist.
+
+Lösungswege und Markierungen der falschen Einstiege werden nur zur Konstruktion und für Tests verwendet, nicht in Chat-Dokumente geschrieben. Alte gespeicherte Rätsel bleiben unverändert spielbar.
 
 Die früheren freien Konfigurationen bleiben intern für gespeicherte Schema-1-Einladungen und deren Replay unterstützt. Neue Einladungen verwenden Schema 2 mit überprüften DV-/Rangparametern und Zielnamen. Neue Ergebnisberichte verwenden ebenfalls Schema 2 für die Zeit ab Spielfeldöffnung; gespeicherte Schema-1-Berichte werden weiterhin mit der alten Zeitmessung ab erstem Zug nachgespielt.
 
@@ -129,7 +137,7 @@ npm run preview
 
 Lokale Vorschau: `http://127.0.0.1:8080/preview/`. Optional `PORT=8090 npm run preview`. Alternativ den Repository-Root mit einem statischen HTTP-Server bereitstellen; `file://` unterstützt die Modul-/Sprachdateien nicht.
 
-Tests decken alle unterstützten DV-/Rang-/Zielkombinationen, Referenzformeln, gemeinsame Lösbarkeit, Alt-Schemata, Timer, Überlappung, Teilerfolge und Paketformat ab. Chromium prüft Konfiguration, Charakterauslesung, Countdown, Hervorhebungen, automatisches Melden, Fehlerwiederholung und mobile Darstellung. Foundry-Hooks/Berechtigungsgrenzen werden mit einem Adapter-Testdouble geprüft, **nicht mit einem laufenden Foundry-Server**.
+Tests decken alle unterstützten DV-/Rang-/Zielkombinationen, Referenzformeln, gemeinsame Lösbarkeit bei niedrigen DVs, einzelne Lösbarkeit und falsche Einstiege bei hohen DVs, Alt-Schemata, Timer, Überlappung, Teilerfolge und Paketformat ab. Der DV20-/Rang-0-Test prüft 100 reproduzierbare Rätsel auf unterschiedliche Ziele und höchstens einen Zieltreffer pro Vierer-Puffer. Chromium prüft Konfiguration, Charakterauslesung, Countdown, Hervorhebungen, automatisches Melden, Fehlerwiederholung und mobile Darstellung. Foundry-Hooks/Berechtigungsgrenzen werden mit einem Adapter-Testdouble geprüft, **nicht mit einem laufenden Foundry-Server**.
 
 `npm run package` erzeugt `dist/foundry-cipher-breach-v0.1.0.zip` und `dist/module.json`. Das ZIP enthält ausschließlich Laufzeit, Manifest und Lizenz-/Dokumentationsdateien; `dist` ist unversioniert. Release erst nach Prüfung der beabsichtigten Revision und möglichst einem echten Foundry-v12-Test veröffentlichen:
 
@@ -139,7 +147,7 @@ gh release create v0.1.0 dist/module.json dist/foundry-cipher-breach-v0.1.0.zip 
 
 ## English
 
-An independently implemented, free Foundry v12+ matrix puzzle using the linked reference module's **house-rule DV presets and Interface formulas**, extended with original DV 16/18/20 presets, not official Cyberpunk RED Netrunning. The GM uses a terminal button to select DV, up to three named objectives and a participant; the character's Netrunner role supplies the editable rank. The assigned player's board opens automatically and starts its timer immediately, even without moves. Completed runs send a partial/full result through core chat without a send button. The compact red/black/white hack monitor includes always-on subtle scanlines and noise, respects reduced motion and never flashes the board. Failures stay visible and turn the jack-out action into a transmission retry. No actor or world data is modified.
+An independently implemented, free Foundry v12+ matrix puzzle using the linked reference module's **house-rule DV presets and Interface formulas**, extended with original DV 16/18/20 presets, not official Cyberpunk RED Netrunning. High DVs use twelve symbols, distinct individually solvable objectives and misleading first-code entries; all objectives are no longer guaranteed to fit one buffer. At DV20 / rank 0, only one of the three objectives can fit the four-slot buffer. The GM uses a terminal button to select DV, up to three named objectives and a participant; the character's Netrunner role supplies the editable rank. The assigned player's board opens automatically and starts its timer immediately, even without moves. Completed runs send a partial/full result through core chat without a send button. The dark-red/light-gray/black hack monitor includes always-on subtle scanlines and noise, respects reduced motion and never flashes the board. Failures stay visible and turn the jack-out action into a transmission retry. No actor or world data is modified.
 
 Use the [English browser demo](https://dominikgursch.github.io/foundry-cipher-breach/preview/?lang=en) for the shared engine/UI and simulated GM/player flow. Actions provides automated checks and an installable module ZIP artifact. The demo and adapter testdouble are not real Foundry multiplayer verification. All player reports remain untrusted; the GM manually adjudicates every effect.
 

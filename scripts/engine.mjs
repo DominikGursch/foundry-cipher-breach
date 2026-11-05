@@ -1,6 +1,7 @@
 import { breachConfig } from "./mechanics.mjs";
 
 export const SYMBOLS = Object.freeze(["0A", "1C", "2E", "3F", "4B", "5D"]);
+export const HARD_SYMBOLS = Object.freeze([...SYMBOLS, "6A", "7C", "8E", "9F", "AB", "CD"]);
 export const DEFAULT_CONFIG = Object.freeze({
   size: 5, buffer: 8, targetCount: 2, sequenceLength: 3, seconds: 60
 });
@@ -62,13 +63,14 @@ export function validateChallenge(input) {
   record(input, "challenge");
   if (![1, 2].includes(input.schema)) throw new Error("Unsupported challenge schema.");
   const config = validateConfig(input.config);
+  const symbols = config.mode === "netrun" && config.dv >= 16 ? HARD_SYMBOLS : SYMBOLS;
   if ((input.schema === 2) !== (config.mode === "netrun")) throw new Error("Challenge schema/config mismatch.");
   if (!Array.isArray(input.matrix) || input.matrix.length !== config.size) {
     throw new Error("Invalid matrix.");
   }
   const matrix = Array.from(input.matrix, row => {
     if (!Array.isArray(row) || row.length !== config.size ||
-        Array.from(row).some(symbol => !SYMBOLS.includes(symbol))) throw new Error("Invalid matrix row.");
+        Array.from(row).some(symbol => !symbols.includes(symbol))) throw new Error("Invalid matrix row.");
     return [...row];
   });
   if (!Array.isArray(input.targets) || input.targets.length !== config.targetCount) {
@@ -76,7 +78,7 @@ export function validateChallenge(input) {
   }
   const targets = Array.from(input.targets, (sequence, index) => {
     if (!Array.isArray(sequence) || sequence.length !== (config.sequenceLengths?.[index] ?? config.sequenceLength) ||
-        Array.from(sequence).some(symbol => !SYMBOLS.includes(symbol))) throw new Error("Invalid target.");
+        Array.from(sequence).some(symbol => !symbols.includes(symbol))) throw new Error("Invalid target.");
     return [...sequence];
   });
   const normalized = {
@@ -123,39 +125,68 @@ export function legalCells(size, moves) {
   return cells;
 }
 
-export function generateChallenge(configInput = DEFAULT_CONFIG, {
-  rng = Math.random, id = "local", participantId = null, names
-} = {}) {
-  const config = validateConfig(configInput);
-  const matrix = Array.from({ length: config.size }, () =>
-    Array.from({ length: config.size }, () => SYMBOLS[randomIndex(SYMBOLS.length, rng)]));
-  // Plant every target along one legal witness; random targets can be impossible.
-  const solution = [];
+function witness(size, length, rng, start = null, excludedColumns = new Set()) {
+  const path = start ? [{ ...start }] : [];
   function extend() {
-    if (solution.length === config.buffer) return true;
-    for (const cell of shuffle(legalCells(config.size, solution), rng)) {
-      solution.push(cell);
+    if (path.length === length) return true;
+    for (const cell of shuffle(legalCells(size, path), rng)) {
+      if (excludedColumns.has(cell.col)) continue;
+      path.push(cell);
       if (extend()) return true;
-      solution.pop();
+      path.pop();
     }
     return false;
   }
   if (!extend()) throw new Error("Could not construct a legal puzzle path.");
-  const codes = solution.map(({ row, col }) => matrix[row][col]);
+  return path;
+}
+
+export function generateChallenge(configInput = DEFAULT_CONFIG, {
+  rng = Math.random, id = "local", participantId = null, names
+} = {}) {
+  const config = validateConfig(configInput);
+  const hard = config.mode === "netrun" && config.dv >= 16;
+  const symbols = hard ? HARD_SYMBOLS : SYMBOLS;
+  const matrix = Array.from({ length: config.size }, () =>
+    Array.from({ length: config.size }, () => symbols[randomIndex(symbols.length, rng)]));
   const lengths = config.sequenceLengths ?? Array(config.targetCount).fill(config.sequenceLength);
-  const total = lengths.reduce((sum, length) => sum + length, 0);
-  let offset = 0;
-  const targets = lengths.map((length, index) => {
-    const start = total <= config.buffer ? offset :
-      Math.round(index * (config.buffer - length) / Math.max(1, config.targetCount - 1));
-    offset += length;
-    return codes.slice(start, start + length);
-  });
+  let solution, targets, solutions, decoys;
+  if (hard) {
+    const columns = shuffle(Array.from({ length: config.size }, (_, col) => col), rng);
+    const starts = columns.slice(0, config.targetCount);
+    const traps = columns.slice(config.targetCount, config.targetCount * 2);
+    const firstCodes = shuffle(symbols, rng).slice(0, config.targetCount);
+    starts.forEach((col, index) => { matrix[0][col] = firstCodes[index]; });
+    // Reserve decoy columns before building routes so planting traps never breaks a witness.
+    solutions = lengths.map((length, index) =>
+      witness(config.size, length, rng, { row: 0, col: starts[index] }, new Set(traps)));
+    targets = solutions.map(path => path.map(({ row, col }) => matrix[row][col]));
+    const secondCodes = new Set(targets.map(sequence => sequence[1]));
+    const noise = symbols.filter(code => !secondCodes.has(code));
+    decoys = traps.map((col, index) => {
+      matrix[0][col] = firstCodes[index];
+      for (let row = 1; row < config.size; row++) matrix[row][col] = noise[randomIndex(noise.length, rng)];
+      return { row: 0, col };
+    });
+    solution = solutions[0];
+  } else {
+    // Lower DVs retain the reference's jointly solvable, overlapping witness.
+    solution = witness(config.size, config.buffer, rng);
+    const codes = solution.map(({ row, col }) => matrix[row][col]);
+    const total = lengths.reduce((sum, length) => sum + length, 0);
+    let offset = 0;
+    targets = lengths.map((length, index) => {
+      const start = total <= config.buffer ? offset :
+        Math.round(index * (config.buffer - length) / Math.max(1, config.targetCount - 1));
+      offset += length;
+      return codes.slice(start, start + length);
+    });
+  }
   const challenge = validateChallenge({
     schema: config.mode === "netrun" ? 2 : 1, id, participantId, config, matrix, targets,
     names: names ?? lengths.map((_, index) => `Objective ${index + 1}`)
   });
-  return { challenge, solution: solution.map(cell => ({ ...cell })) };
+  return { challenge, solution, ...(hard ? { solutions, decoys } : {}) };
 }
 
 export function validateResult(input, challengeInput) {
