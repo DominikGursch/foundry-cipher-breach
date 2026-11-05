@@ -194,6 +194,41 @@
   background: linear-gradient(transparent 20%, #afcddb14 49%, transparent 65%);
   opacity: .3; animation: cb-interference 8s ease-in-out infinite;
 }
+.cipher-breach.cb-board .cb-signal-lost {
+  display: none; position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  align-content: center; justify-items: center; gap: 12px; padding: 16px;
+  text-align: center; background: #100e1670;
+}
+.cipher-breach.cb-timeout .cb-signal-lost { display: grid; }
+.cipher-breach.cb-timeout .cb-signal-lost strong {
+  color: var(--cb-warm); background: #100e16ed; border: 1px solid var(--cb-accent);
+  padding: 12px; text-transform: uppercase; letter-spacing: .12em; font-size: clamp(14px, 1.8vw, 20px);
+  box-shadow: -4px 3px 0 #ff4b5533, 5px -2px 0 #ff4b551a;
+}
+.cipher-breach.cb-timeout .cb-signal-lost small {
+  color: var(--cb-muted); background: var(--cb-bg); padding: 4px; font-size: 10px;
+}
+.cipher-breach.cb-timeout .cb-cell { filter: blur(1px); opacity: .25; }
+.cipher-breach.cb-timeout .cb-matrix::before {
+  background-image: repeating-linear-gradient(0deg, #000b 0 3px, #ff4b5540 3px 4px, transparent 4px 9px),
+    repeating-linear-gradient(117deg, #ffb0b448 0 1px, transparent 1px 4px);
+  opacity: .6; animation: cb-signal-noise 2.8s steps(1, end) infinite;
+}
+.cipher-breach.cb-timeout .cb-matrix::after {
+  background: linear-gradient(transparent 12%, #ff4b5538 12% 15%, transparent 15% 48%, #ffb0b430 48% 54%, transparent 54% 79%, #000b 79% 86%, transparent 86%);
+  opacity: .7; animation: cb-signal-tear 3.7s steps(1, end) infinite;
+}
+@keyframes cb-signal-noise {
+  0%, 100% { background-position: 0 0; opacity: .6; }
+  31% { background-position: 9px 6px; opacity: .72; }
+  66% { background-position: -7px 13px; opacity: .64; }
+}
+@keyframes cb-signal-tear {
+  0%, 100% { transform: translateY(-8%); }
+  28% { transform: translateY(12%); }
+  61% { transform: translateY(-17%); }
+  83% { transform: translateY(4%); }
+}
 .cipher-breach.cb-board .cb-cell {
   color: var(--cb-muted); text-shadow: 0 0 5px #ff4b552b;
   font-size: clamp(14px, 1.8vw, 20px);
@@ -231,7 +266,7 @@
 .cipher-breach.cb-board .cb-jack { width: 100%; text-transform: uppercase; letter-spacing: .15em; color: var(--cb-accent); background: transparent; border: 1px solid var(--cb-line); }
 .cipher-breach.cb-board .cb-jack:hover:not(:disabled) { color: var(--cb-bg); background: var(--cb-accent); }
 .cipher-breach.cb-critical .cb-time { text-decoration: underline; }
-/* Subtle overlays simulate noise; code cells and controls never flicker or move. */
+/* Interference stays on decorative layers, never on interactive controls. */
 @keyframes cb-noise {
   0%, 100% { background-position: 0 0; opacity: .24; }
   50% { background-position: 2px 1px; opacity: .32; }

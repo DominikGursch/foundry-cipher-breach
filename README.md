@@ -65,6 +65,8 @@ Scanlines, schwaches Bildrauschen und eine langsame Monitorstörung sind immer a
 
 Hinter den Panels liegen schwach sichtbare, langsam driftende Zahlen-/Algorithmusfragmente und ein perspektivisches Netzwerk-Raster. Versetzte, unterbrochene Rahmenlinien vermitteln eine virtuelle Datenumgebung. Diese rein dekorativen Ebenen enthalten keine echten Charakter-, Netzwerk- oder Rätseldaten, sind für Screenreader ausgeblendet und fangen keine Eingaben ab. Ihre Bewegung wird bei reduzierter Bewegung ebenfalls unterdrückt.
 
+Nur bei Zeitablauf zeigt die Matrix einen erzwungenen Verbindungsabbruch: gedimmte, unscharfe Codes, verstärktes Rauschen, versetzte Bildstreifen und die Meldung **Vom System getrennt / Ejected from system**. Ergebnis, Ziele und Ausstöpseln bleiben unverändert lesbar. Es gibt keine schnellen Vollbildblitze; bei reduzierter Bewegung bleibt ein statisches Störbild.
+
 ## Mechanik der Referenz
 
 | DV | Matrix | Codes pro Ziel |

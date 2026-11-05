@@ -79,6 +79,8 @@ test("sequence prefix, hover feedback and final-slot win work in the actual boar
   await cells.nth(6).click();
   await cells.nth(11).click();
   await expect(page.locator(".cb-status")).toContainText("All targets matched.");
+  await expect(page.locator(".cb-signal-lost")).toBeHidden();
+  await expect(page.locator(".cb-board")).not.toHaveClass(/cb-timeout/);
   await expect(page.locator(".cb-matched")).toHaveCount(2);
   await expect.poll(() => page.evaluate(() => window.sent.length)).toBe(1);
   expect(await page.evaluate(() => window.sent[0].outcome)).toBe("won");
@@ -294,7 +296,7 @@ test("compact hack monitor omits helper controls and keeps noise active, respect
   await page.clock.runFor(39000);
   await expect(board).toHaveClass(/cb-ended/);
   await page.emulateMedia({ reducedMotion: "no-preference" });
-  expect(await animation()).toBe("cb-interference");
+  expect(await animation()).toBe("cb-signal-tear");
 });
 
 test("DV20 rank zero decoy fails while a real route reports exactly one achieved objective", async ({ page }) => {
@@ -433,6 +435,36 @@ for (const width of [1280, 390]) {
 }
 
 for (const lang of ["de", "en"]) {
+  test(`timeout disrupts only the matrix signal in ${lang}, including reduced motion`, async ({ page }) => {
+    await page.clock.install();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`/preview/?lang=${lang}`);
+    await page.locator("#open").click();
+    await page.locator('[type="submit"]').click();
+    const signal = page.locator(".cb-signal-lost");
+    await expect(signal).toBeHidden();
+    await page.clock.runFor(39000);
+    await expect(page.locator(".cb-board")).toHaveClass(/cb-timeout/);
+    await expect(signal).toBeVisible();
+    await expect(signal).toContainText(lang === "de" ? "Vom System getrennt" : "Ejected from system");
+    await expect(signal).toHaveAttribute("aria-hidden", "true");
+    expect(await signal.evaluate(node => getComputedStyle(node).pointerEvents)).toBe("none");
+    const effects = () => page.locator(".cb-matrix").evaluate(node => ({
+      noise: getComputedStyle(node, "::before").animationName,
+      tear: getComputedStyle(node, "::after").animationName,
+      bounded: node.scrollWidth <= node.clientWidth
+    }));
+    expect(await effects()).toEqual({ noise: "cb-signal-noise", tear: "cb-signal-tear", bounded: true });
+    await expect(page.locator(".cb-cell:enabled")).toHaveCount(0);
+    await expect(page.locator("#results .cb-report")).toHaveCount(1);
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    expect(await effects()).toEqual({ noise: "none", tear: "none", bounded: true });
+    await expect(signal).toBeVisible();
+    await expect(page.locator(".cb-jack")).toBeEnabled();
+    await page.locator(".cb-jack").click();
+    await expect(page.locator(".cb-board")).toHaveCount(0);
+  });
+
   test(`objective symbols follow ${lang} names and custom names remain safe`, async ({ page }) => {
     await page.goto(`/preview/?lang=${lang}`);
     await page.locator("#open").click();

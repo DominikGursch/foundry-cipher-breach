@@ -116,6 +116,12 @@ export function openBoard(challenge, { t, onSubmit = null, onError = console.err
     grid.append(cell);
     return cell;
   }));
+  grid.append(element("div", {
+    className: "cb-signal-lost", attributes: { "aria-hidden": "true" }
+  }, [
+    element("strong", { text: t("systemEjected") }),
+    element("small", { text: "ERR / NET_LINK_TERMINATED" })
+  ]));
   const targets = element("ol", { className: "cb-targets" });
   const targetNodes = puzzle.challenge.targets.map((sequence, index) => {
     const name = puzzle.challenge.names?.[index] ?? `${t("objective")} ${index + 1}`;
@@ -202,6 +208,7 @@ export function openBoard(challenge, { t, onSubmit = null, onError = console.err
     root.classList.toggle("cb-ended", ended);
     root.classList.toggle("cb-failed", ended && !puzzle.matched.some(Boolean));
     root.classList.toggle("cb-critical", !ended && remaining <= 10);
+    root.classList.toggle("cb-timeout", currentStatus === "timeout");
     bufferCount.textContent = `${puzzle.moves.length}/${config.buffer}`;
     const legal = new Set(legalCells(puzzle.challenge.config.size, puzzle.moves).map(cell => `${cell.row}:${cell.col}`));
     for (let row = 0; row < cells.length; row++) {
