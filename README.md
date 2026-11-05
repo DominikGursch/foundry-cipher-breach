@@ -82,7 +82,7 @@ Bei jedem Ende zeigt die Matrix dasselbe Störbild: gedimmte, unscharfe Codes, v
 | 18 | 8 x 8 | 5, 5, 6 |
 | 20 | 8 x 8 | 5, 6, 6 |
 
-DV 6–14 stammen aus der Referenzmechanik; DV 16, 18 und 20 sind eine eigene Fortsetzung dieser Hausregel. Es sind weiterhin höchstens drei Ziele möglich. Die Zeit-/Pufferformeln bleiben unverändert; auch bei DV 20 gibt es mindestens 15 Sekunden. Lange Sequenzen werden bei niedrigen Rängen wie bisher auf den Puffer begrenzt.
+DV 6–14 stammen aus der Referenzmechanik; DV 16, 18 und 20 sind eine eigene Fortsetzung dieser Hausregel. Es sind weiterhin höchstens drei Ziele möglich. Die Pufferformel bleibt unverändert. Neue Hoch-DV-Breaches haben unter Interface 4 eine zusätzliche Zeitstrafe; alte Einladungen behalten mindestens 15 Sekunden. Lange Sequenzen werden bei niedrigen Rängen wie bisher auf den Puffer begrenzt, damit kein Ziel allein durch seine Länge unmöglich wird.
 
 **Puffer:** `4 + Math.ceil(Interface-Rang / 2)`
 
@@ -97,7 +97,19 @@ DV 6–14 stammen aus der Referenzmechanik; DV 16, 18 und 20 sind eine eigene Fo
 
 Der DV verändert die Pufferlänge nicht. Er beeinflusst Matrixgröße, Zielsequenzen und Zeit.
 
-**Zeit in Sekunden:** `Math.max(15, 25 + 4 * Interface-Rang - (DV - 6))`
+**Basiszeit in Sekunden:** `Math.max(15, 25 + 4 * Interface-Rang - (DV - 6))`
+
+**Neue Balance (Version 2):** Bei DV ≥16 wird `pressure = (DV - 14) * Math.max(0, 4 - Rang) / 2` abgezogen. Die tatsächliche Zeit ist `Math.max(6, Math.floor(Basiszeit - pressure))`. Unter DV16 gibt es keine zusätzliche Zeitstrafe; ab Interface 4 gelten überall die bisherigen Zeiten.
+
+| Interface | DV16 | DV18 | DV20 |
+|---|---|---|---|
+| 0 | 11s | 7s | 6s |
+| 1 | 16s | 11s | 6s |
+| 2 | 21s | 17s | 13s |
+| 3 | 26s | 23s | 20s |
+| 4 | 31s | 29s | 27s |
+
+Diese zusätzliche Hoch-DV-Zeitstrafe ist eine eigene Balanceentscheidung, keine Regel aus dem Referenzmodul oder dem offiziellen RED-Regelwerk. Die Zahl der Ziele ändert die Zeit nicht.
 
 **Interface-Rang:** ganze Zahl von 0 bis 10.
 
@@ -105,11 +117,13 @@ Bei weniger Zielen werden die ersten Sequenzlängen des DV-Presets verwendet. Je
 
 **DV 6–14:** Die Engine erzeugt einen legalen, nicht wiederholten Pfad und nimmt alle Zielsequenzen daraus. Wenn die Summe der Längen nicht in den Puffer passt, werden die Starts wie im Referenzcode über den Pfad verteilt: `Math.round(index * (buffer - length) / Math.max(1, count - 1))`. Dadurch überlappen Ziele und sind gemeinsam lösbar. Ein selbst gewählter Weg kann trotzdem erfolglos sein.
 
-**DV 16–20:** Zwölf statt sechs Codes und getrennte, unterschiedliche Zielrouten. Jedes Ziel besitzt einen eigenen legalen Weg innerhalb des Puffers; **alle Ziele gemeinsam sind nicht garantiert erreichbar**. Die Entscheidung, welche Belohnung verfolgt wird, gehört zur Schwierigkeit. Zusätzlich bekommt jedes Ziel einen irreführenden Einstieg in der obersten Zeile: gleicher erster Code, aber in dessen Spalte fehlt der zweite Zielcode. Diese Einstiege sind Sequenz-Sackgassen, keine gesperrten Zellen; andere legale Züge bleiben erlaubt, verbrauchen aber den knappen Puffer.
+**DV 16–20:** Zwölf statt sechs Codes und getrennte, unterschiedliche Zielrouten. Jedes Ziel besitzt einen eigenen legalen Weg innerhalb des Puffers; **alle Ziele gemeinsam sind nicht garantiert erreichbar**. Die Entscheidung, welche Belohnung verfolgt wird, gehört zur Schwierigkeit. Irreführende Einstiege sind Sequenz-Sackgassen, keine gesperrten Zellen; andere legale Züge bleiben erlaubt, verbrauchen aber den knappen Puffer.
 
-Der bisherige Sonderfall bei **DV20 / Interface 0** ist beseitigt: drei Ziele mit jeweils vier Codes sind nun unterschiedlich statt identisch. Ein Vierer-Puffer kann somit höchstens eines davon erreichen, nicht mit vier Klicks automatisch alle drei. Zeit und Puffer bleiben charakterabhängig; ein einzelnes Ziel bleibt bewusst möglich. Bei höheren Rängen können nach einem Fehlstart neue Sequenzen begonnen werden, solange genug Puffer übrig ist.
+**Neue DV18/20-Breaches bei Interface 0:** Jedes Vierer-Ziel hat exakt einen vollständigen legalen Lösungsweg. Täuschpfade passen die ersten **drei** Codes und scheitern erst am vierten. Bei nur einem Ziel gibt es mindestens acht solche falschen Dreierpfade, verteilt auf vier (DV18) bzw. fünf (DV20) falsche Einstiege. Der frühere falsche Einstieg ohne passenden zweiten Code war zu leicht vorab auszuschließen. Die garantierte echte Route bleibt bestehen, aber 7 bzw. 6 Sekunden erfordern sehr schnelle Planung; ein Fehlklick verbraucht einen der vier Plätze ohne Reparaturmöglichkeit. Drei Ziele bleiben unterschiedlich, daher kann höchstens eines erreicht werden. Bei anderen Rängen/DVs bleiben die bisherigen falschen Einstiege erhalten; größere Puffer erlauben eher eine Korrektur.
 
-Lösungswege und Markierungen der falschen Einstiege werden nur zur Konstruktion und für Tests verwendet, nicht in Chat-Dokumente geschrieben. Alte gespeicherte Rätsel bleiben unverändert spielbar.
+Es gibt keine versteckte Erfolgswürfelprobe und keine zufällig unlösbaren Rätsel. Eine nahezu unmögliche menschliche Erfolgsquote lässt sich ohne Spieltests nicht garantieren: geübte Spieler können die offene Matrix weiterhin lösen. Die messbaren Balancegrenzen sind Zeit, exakt eine vollständige Route und die Zahl täuschender Dreierpfade.
+
+Lösungswege und Markierungen der falschen Einstiege werden nur zur Konstruktion und für Tests verwendet, nicht in Chat-Dokumente geschrieben. Neue Konfigurationen speichern `balance: 2`; Konfigurationen ohne dieses Feld verwenden die alte Balance. Alte gespeicherte Rätsel bleiben unverändert spielbar.
 
 Die früheren freien Konfigurationen bleiben intern für gespeicherte Schema-1-Einladungen und deren Replay unterstützt. Neue Einladungen verwenden Schema 2 mit überprüften DV-/Rangparametern und Zielnamen. Neue Ergebnisberichte verwenden ebenfalls Schema 2 für die Zeit ab Spielfeldöffnung; gespeicherte Schema-1-Berichte werden weiterhin mit der alten Zeitmessung ab erstem Zug nachgespielt.
 

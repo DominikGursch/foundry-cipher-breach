@@ -34,7 +34,7 @@ export function validateConfig(input) {
     integer(input.dv, 6, 20, "DV");
     integer(input.rank, 0, 10, "Interface rank");
     integer(input.targetCount, 1, 3, "Target count");
-    const config = breachConfig(input);
+    const config = breachConfig({ ...input, balance: input.balance ?? 1 });
     for (const key of ["size", "buffer", "seconds"]) {
       if (input[key] !== config[key]) throw new Error(`Inconsistent ${key}.`);
     }
@@ -141,17 +141,55 @@ function witness(size, length, rng, start = null, excludedColumns = new Set()) {
   return path;
 }
 
+function lowInterfaceRoutes(config, rng) {
+  const columns = shuffle(Array.from({ length: config.size }, (_, col) => col), rng);
+  const rows = shuffle(Array.from({ length: config.size - 1 }, (_, row) => row + 1), rng);
+  const codes = shuffle(HARD_SYMBOLS, rng);
+  const targets = Array.from({ length: config.targetCount }, (_, index) => codes.slice(index * 4, index * 4 + 4));
+  const noise = HARD_SYMBOLS.filter(code => !targets.some(sequence => sequence.slice(1).includes(code)));
+  const matrix = Array.from({ length: config.size }, () =>
+    Array.from({ length: config.size }, () => noise[randomIndex(noise.length, rng)]));
+  const starts = columns.slice(0, config.targetCount);
+  const available = columns.slice(config.targetCount);
+  const trapCount = config.targetCount === 1 ? (config.dv === 20 ? 5 : 4) : Math.floor(available.length / config.targetCount);
+  const solutions = [], decoys = [], decoyPaths = [];
+  targets.forEach((sequence, index) => {
+    const start = starts[index];
+    const exit = columns[(index + 1) % config.size];
+    const realRow = rows[index], trapRow = rows[config.targetCount + index], exitRow = rows.at(-1);
+    const path = [{ row: 0, col: start }, { row: realRow, col: start },
+      { row: realRow, col: exit }, { row: exitRow, col: exit }];
+    path.forEach(({ row, col }, step) => { matrix[row][col] = sequence[step]; });
+    solutions.push(path);
+    const traps = available.slice(index * trapCount, (index + 1) * trapCount);
+    const falseExits = columns.filter(col => col !== exit && !traps.includes(col));
+    traps.forEach(col => {
+      matrix[0][col] = sequence[0];
+      matrix[trapRow][col] = sequence[1];
+      falseExits.forEach(falseExit => {
+        matrix[trapRow][falseExit] = sequence[2];
+        decoyPaths.push([{ row: 0, col }, { row: trapRow, col }, { row: trapRow, col: falseExit }]);
+      });
+    });
+    decoys.push({ row: 0, col: traps[0] });
+  });
+  return { matrix, targets, solutions, decoys, decoyPaths };
+}
+
 export function generateChallenge(configInput = DEFAULT_CONFIG, {
   rng = Math.random, id = "local", participantId = null, names
 } = {}) {
   const config = validateConfig(configInput);
   const hard = config.mode === "netrun" && config.dv >= 16;
   const symbols = hard ? HARD_SYMBOLS : SYMBOLS;
-  const matrix = Array.from({ length: config.size }, () =>
+  let matrix = Array.from({ length: config.size }, () =>
     Array.from({ length: config.size }, () => symbols[randomIndex(symbols.length, rng)]));
   const lengths = config.sequenceLengths ?? Array(config.targetCount).fill(config.sequenceLength);
-  let solution, targets, solutions, decoys;
-  if (hard) {
+  let solution, targets, solutions, decoys, decoyPaths;
+  if (hard && config.balance === 2 && config.dv >= 18 && config.rank === 0) {
+    ({ matrix, targets, solutions, decoys, decoyPaths } = lowInterfaceRoutes(config, rng));
+    solution = solutions[0];
+  } else if (hard) {
     const columns = shuffle(Array.from({ length: config.size }, (_, col) => col), rng);
     const starts = columns.slice(0, config.targetCount);
     const traps = columns.slice(config.targetCount, config.targetCount * 2);
@@ -186,7 +224,7 @@ export function generateChallenge(configInput = DEFAULT_CONFIG, {
     schema: config.mode === "netrun" ? 2 : 1, id, participantId, config, matrix, targets,
     names: names ?? lengths.map((_, index) => `Objective ${index + 1}`)
   });
-  return { challenge, solution, ...(hard ? { solutions, decoys } : {}) };
+  return { challenge, solution, ...(hard ? { solutions, decoys } : {}), ...(decoyPaths ? { decoyPaths } : {}) };
 }
 
 export function validateResult(input, challengeInput) {

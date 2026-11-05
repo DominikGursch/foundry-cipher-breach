@@ -10,7 +10,7 @@ function seeded(seed) {
   };
 }
 
-test("exact reference DV presets and rank formulas, including zero and the 15s floor", () => {
+test("DV resources include versioned low-Interface pressure while retaining reference buffers", () => {
   const expected = [
     [6, 5, [2, 3]], [8, 5, [2, 3, 3]], [10, 6, [3, 3, 4]], [12, 6, [3, 4, 4]],
     [14, 7, [4, 4, 5]], [16, 7, [4, 5, 5]], [18, 8, [5, 5, 6]], [20, 8, [5, 6, 6]]
@@ -20,13 +20,17 @@ test("exact reference DV presets and rank formulas, including zero and the 15s f
       const config = breachConfig({ dv, rank });
       assert.equal(config.size, size);
       assert.equal(config.buffer, 4 + Math.ceil(rank / 2));
-      assert.equal(config.seconds, Math.max(15, 25 + rank * 4 - (dv - 6)));
+      const reference = Math.max(15, 25 + rank * 4 - (dv - 6));
+      const pressure = dv >= 16 ? (dv - 14) * Math.max(0, 4 - rank) / 2 : 0;
+      assert.equal(config.seconds, Math.max(6, Math.floor(reference - pressure)));
+      assert.equal(breachConfig({ dv, rank, balance: 1 }).seconds, reference);
       assert.deepEqual(config.sequenceLengths, lengths.map(length => Math.min(length, config.buffer)));
       assert.deepEqual(validateConfig(config), config);
     }
   }
   assert.equal(breachConfig({ dv: 14, rank: 0 }).seconds, 17);
-  assert.equal(breachConfig({ dv: 20, rank: 0 }).seconds, 15);
+  assert.equal(breachConfig({ dv: 18, rank: 0 }).seconds, 7);
+  assert.equal(breachConfig({ dv: 20, rank: 0 }).seconds, 6);
   assert.equal(breachConfig({ dv: 8, rank: 7 }).buffer, 8);
 });
 
@@ -35,7 +39,7 @@ test("reference DVs retain jointly solvable overlapping targets", () => {
     for (let rank = 0; rank <= 10; rank++) {
       for (let targetCount = 1; targetCount <= DV_PRESETS[dv].lengths.length; targetCount++) {
         for (let seed = 0; seed < 20; seed++) {
-          const config = breachConfig({ dv, rank, targetCount });
+          const config = breachConfig({ dv, rank, targetCount, balance: 1 });
           const names = ["Password", "Data", "Node"].slice(0, targetCount);
           const { challenge, solution } = generateChallenge(config, { rng: seeded(seed), names });
           assert.equal(challenge.schema, 2);
@@ -67,7 +71,7 @@ test("high DVs have distinct individually solvable routes and misleading first-c
     for (let rank = 0; rank <= 10; rank++) {
       for (let targetCount = 1; targetCount <= 3; targetCount++) {
         for (let seed = 0; seed < 20; seed++) {
-          const config = breachConfig({ dv, rank, targetCount });
+          const config = breachConfig({ dv, rank, targetCount, balance: 1 });
           const generated = generateChallenge(config, { rng: seeded(seed) });
           const { challenge, solutions, decoys } = generated;
           assert.deepEqual(generated, generateChallenge(config, { rng: seeded(seed) }));
@@ -99,6 +103,61 @@ test("high DVs have distinct individually solvable routes and misleading first-c
   }
 });
 
+test("new DV18/20 rank-zero puzzles have exactly one route per objective and late dead-end prefixes", () => {
+  for (const dv of [18, 20]) {
+    for (const targetCount of [1, 2, 3]) {
+      for (let seed = 0; seed < 100; seed++) {
+        const config = breachConfig({ dv, rank: 0, targetCount });
+        const generated = generateChallenge(config, { rng: seeded(seed) });
+        const { challenge, solutions, decoyPaths } = generated;
+        assert.deepEqual(generated, generateChallenge(config, { rng: seeded(seed) }));
+        assert.equal(challenge.config.seconds, dv === 18 ? 7 : 6);
+        assert.equal(challenge.config.balance, 2);
+        assert.equal(challenge.decoyPaths, undefined);
+        for (const [index, sequence] of challenge.targets.entries()) {
+          const prefixes = [], completed = [];
+          function enumerate(moves = []) {
+            if (moves.length === 3) prefixes.push(moves);
+            if (moves.length === 4) { completed.push(moves); return; }
+            for (const cell of legalCells(config.size, moves)) {
+              if (challenge.matrix[cell.row][cell.col] === sequence[moves.length]) enumerate([...moves, cell]);
+            }
+          }
+          enumerate();
+          assert.equal(completed.length, 1);
+          assert.deepEqual(completed[0], solutions[index]);
+          assert.ok(prefixes.length >= (targetCount === 1 ? 9 : 3));
+          const puzzle = new Puzzle(challenge, { now: () => 0 });
+          for (const cell of solutions[index]) puzzle.select(cell.row, cell.col);
+          assert.equal(puzzle.matched[index], true);
+          assert.equal(replayResult(challenge, puzzle.result()).matched[index], true);
+        }
+        for (const path of decoyPaths) {
+          const sequence = challenge.targets.find(target => target[0] === challenge.matrix[0][path[0].col]);
+          assert.ok(sequence);
+          const puzzle = new Puzzle(challenge, { now: () => 0 });
+          for (const cell of path) puzzle.select(cell.row, cell.col);
+          assert.deepEqual(path.map(({ row, col }) => challenge.matrix[row][col]), sequence.slice(0, 3));
+          assert.ok(legalCells(config.size, path).every(cell => challenge.matrix[cell.row][cell.col] !== sequence[3]));
+          const next = legalCells(config.size, path)[0];
+          puzzle.select(next.row, next.col);
+          assert.equal(puzzle.matched.some(Boolean), false);
+        }
+      }
+    }
+  }
+});
+
+test("saved balance-one challenges retain their original clock and new balance fields cannot be forged", () => {
+  const old = generateChallenge(breachConfig({ dv: 20, rank: 0, targetCount: 1, balance: 1 })).challenge;
+  assert.equal(old.config.balance, undefined);
+  assert.equal(validateChallenge(old).config.seconds, 15);
+  const current = generateChallenge(breachConfig({ dv: 20, rank: 0, targetCount: 1 })).challenge;
+  assert.throws(() => validateChallenge({ ...current, config: { ...current.config, seconds: 15 } }));
+  assert.throws(() => validateChallenge({ ...current, config: { ...current.config, balance: 3 } }));
+  assert.throws(() => validateChallenge({ ...current, config: { ...current.config, balance: undefined } }));
+});
+
 test("DV20 rank zero cannot win all three objectives; misleading entries cannot complete any objective", () => {
   function reachable(challenge, sequence, moves = []) {
     if (moves.length === sequence.length) return true;
@@ -107,7 +166,7 @@ test("DV20 rank zero cannot win all three objectives; misleading entries cannot 
       reachable(challenge, sequence, [...moves, cell]));
   }
   for (let seed = 0; seed < 100; seed++) {
-    const { challenge, solutions, decoys } = generateChallenge(breachConfig({ dv: 20, rank: 0 }), { rng: seeded(seed) });
+    const { challenge, solutions, decoys } = generateChallenge(breachConfig({ dv: 20, rank: 0, balance: 1 }), { rng: seeded(seed) });
     assert.equal(challenge.config.seconds, 15);
     assert.equal(challenge.config.buffer, 4);
     assert.deepEqual(challenge.targets.map(sequence => sequence.length), [4, 4, 4]);
@@ -131,7 +190,7 @@ test("saved high-DV puzzles with the original alphabet and identical targets sti
     size: 8, buffer: 4, targetCount: 1, sequenceLength: 4, seconds: 15
   }, { rng: seeded(42) });
   const challenge = validateChallenge({
-    ...original, schema: 2, config: breachConfig({ dv: 20, rank: 0 }),
+    ...original, schema: 2, config: breachConfig({ dv: 20, rank: 0, balance: 1 }),
     targets: Array.from({ length: 3 }, () => [...original.targets[0]]), names: ["Password", "Data", "Node"]
   });
   const puzzle = new Puzzle(challenge, { now: () => 0 });

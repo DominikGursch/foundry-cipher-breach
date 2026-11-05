@@ -264,10 +264,10 @@ test("DV 16-20 are available and no-move timeout is automatically reported", asy
     await expect(page.locator(".cb-config .cb-metadata")).toContainText(lengths);
   }
   await page.locator('[name="participant"]').selectOption("demo0");
-  await expect(page.locator(".cb-config .cb-metadata")).toContainText("15s");
+  await expect(page.locator(".cb-config .cb-metadata")).toContainText("6s");
   await page.locator('[type="submit"]').click();
   await expect(page.locator(".cb-cell")).toHaveCount(64);
-  await page.clock.runFor(15000);
+  await page.clock.runFor(6000);
   await expect(page.locator("#results .cb-report")).toContainText("Zeitlimit erreicht");
   await expect(page.locator("#results .cb-report")).toContainText("Puffer 0/4");
   await expect(page.locator("#results .cb-report")).toHaveCount(1);
@@ -336,6 +336,50 @@ test("DV20 rank zero decoy fails while a real route reports exactly one achieved
   await expect(page.locator(".cb-matched")).toHaveCount(1);
   await expect(page.locator(".cb-status")).toContainText("Buffer full");
 });
+
+for (const [dv, seconds] of [[18, 7], [20, 6]]) {
+  test(`single-objective DV${dv} Interface zero has a short clock and a three-code trap`, async ({ page }) => {
+    await page.clock.install();
+    await page.goto("/preview/?lang=en");
+    await page.locator("#open").click();
+    await page.locator('[name="dv"]').selectOption(String(dv));
+    await page.locator('[name="participant"]').selectOption("demo0");
+    await page.locator('[name="targetCount"]').selectOption("1");
+    await expect(page.locator(".cb-config .cb-metadata")).toContainText(`${seconds}s`);
+    await page.locator(".cb-close").click();
+    await page.evaluate(async difficulty => {
+      const { generateChallenge, replayResult } = await import("/scripts/engine.mjs");
+      const { breachConfig } = await import("/scripts/mechanics.mjs");
+      const { openBoard } = await import("/scripts/ui.mjs");
+      const strings = (await (await fetch("/lang/en.json")).json()).CB;
+      window.generated = generateChallenge(breachConfig({ dv: difficulty, rank: 0, targetCount: 1 }));
+      window.reports = [];
+      window.openTestBoard = () => openBoard(window.generated.challenge, {
+        t: key => strings[key],
+        onSubmit: async result => window.reports.push(replayResult(window.generated.challenge, result))
+      });
+      window.openTestBoard();
+    }, dv);
+    await expect(page.locator(".cb-time")).toHaveText(`${seconds}.0s`);
+    await expect(page.locator(".cb-targets li")).toHaveCount(1);
+    const trap = await page.evaluate(() => window.generated.decoyPaths[0]);
+    for (const cell of trap) await page.locator(".cb-cell").nth(cell.row * 8 + cell.col).click();
+    await expect(page.locator(".cb-progress")).toHaveCount(3);
+    await page.locator(".cb-cell:enabled").first().click();
+    await expect(page.locator(".cb-status")).toContainText("Buffer full");
+    expect(await page.evaluate(() => window.reports[0].matched)).toEqual([false]);
+    await page.locator(".cb-jack").click();
+    await page.evaluate(() => window.openTestBoard());
+    const solution = await page.evaluate(() => window.generated.solutions[0]);
+    for (const cell of solution) await page.locator(".cb-cell").nth(cell.row * 8 + cell.col).click();
+    expect(await page.evaluate(() => window.reports[1].outcome)).toBe("won");
+    await page.locator(".cb-jack").click();
+    await page.evaluate(() => window.openTestBoard());
+    await page.clock.runFor(seconds * 1000);
+    await expect(page.locator(".cb-status")).toContainText("Time limit reached");
+    expect(await page.evaluate(() => window.reports[2].elapsedMs)).toBe(seconds * 1000);
+  });
+}
 
 test("red terminal arranges timer and buffer above matrix and upload targets", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });

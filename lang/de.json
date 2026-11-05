@@ -39,7 +39,7 @@
     "visibility": "Chat-Sichtbarkeit",
     "private": "SL und Teilnehmer",
     "public": "Alle",
-    "configHint": "Puffer = 4 + halber Interface-Rang, aufgerundet. Zeit = max(15, 25 + 4 x Rang - (DV - 6)) Sekunden. DV bestimmt die Sequenzlängen; Ziele können überlappen.",
+    "configHint": "Puffer = 4 + halber Interface-Rang, aufgerundet. Basiszeit = max(15, 25 + 4 x Rang - (DV - 6)). Ab DV16 und Rang unter 4 wird (DV - 14) x (4 - Rang) / 2 abgezogen, abgerundet auf volle Sekunden; mindestens 6 Sekunden. DV bestimmt die Sequenzlängen; Ziele können überlappen.",
     "configError": "Start fehlgeschlagen. Prüfe DV, Interface-Rang (0–10), Zielnamen und Chat-Berechtigungen. Details stehen in der Konsole.",
     "launch": "Rätsel starten",
     "challengeCard": "Cipher Breach: SL-Rätsel. Der zugewiesene Teilnehmer kann unten einen neuen Versuch öffnen.",
@@ -76,7 +76,7 @@
     "effectsOn": "Bildschirmeffekte an",
     "floorBreach": "NET / FLOOR BREACH",
     "retryReport": "Übertragung wiederholen",
-    "hardHint": "DV 16–20: zwölf Codes, getrennte Zielrouten und falsche Einstiege. Jedes Ziel ist einzeln erreichbar, nicht zwingend alle in einem Puffer. Bei DV20 und Interface 0 ist höchstens eines von drei Zielen erreichbar.",
+    "hardHint": "DV 16–20: zwölf Codes und getrennte Zielrouten. Unter Interface 4 sinkt die Zeit deutlich. Bei DV18/20 und Interface 0 bleiben 7/6 Sekunden; falsche Routen passen drei Codes lang, aber nur eine Route pro Ziel ist vollständig. Das gilt auch bei nur einem Ziel. Jedes Ziel ist einzeln erreichbar, nicht zwingend alle in einem Puffer; bei DV20 und Interface 0 ist höchstens eines von drei Zielen erreichbar.",
     "uploadTargets": "Upload-Zielsequenzen",
     "systemEjected": "Vom System getrennt"
   }

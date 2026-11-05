@@ -9,17 +9,21 @@ export const DV_PRESETS = Object.freeze({
   20: Object.freeze({ size: 8, lengths: Object.freeze([5, 6, 6]) })
 });
 
-export function breachConfig({ dv = 8, rank = 4, targetCount = DV_PRESETS[dv]?.lengths.length } = {}) {
+export function breachConfig({ dv = 8, rank = 4, targetCount = DV_PRESETS[dv]?.lengths.length, balance = 2 } = {}) {
   if (!Object.hasOwn(DV_PRESETS, dv) || !Number.isInteger(dv)) throw new Error("Unsupported DV.");
   if (!Number.isInteger(rank) || rank < 0 || rank > 10) throw new Error("Interface rank must be 0-10.");
   if (!Number.isInteger(targetCount) || targetCount < 1 || targetCount > DV_PRESETS[dv].lengths.length) {
     throw new Error("Target count exceeds the DV preset.");
   }
+  if (![1, 2].includes(balance)) throw new Error("Unsupported balance version.");
   const buffer = 4 + Math.ceil(rank / 2);
+  const referenceSeconds = Math.max(15, 25 + 4 * rank - (dv - 6));
+  const pressure = balance === 2 && dv >= 16 ? (dv - 14) * Math.max(0, 4 - rank) / 2 : 0;
   return {
     mode: "netrun", dv, rank, size: DV_PRESETS[dv].size, buffer, targetCount,
     sequenceLengths: DV_PRESETS[dv].lengths.slice(0, targetCount).map(length => Math.min(length, buffer)),
-    seconds: Math.max(15, 25 + 4 * rank - (dv - 6))
+    seconds: Math.max(6, Math.floor(referenceSeconds - pressure)),
+    ...(balance === 2 ? { balance } : {})
   };
 }
 
