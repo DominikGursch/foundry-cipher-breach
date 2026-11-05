@@ -79,7 +79,8 @@ test("sequence prefix, hover feedback and final-slot win work in the actual boar
   await cells.nth(6).click();
   await cells.nth(11).click();
   await expect(page.locator(".cb-status")).toContainText("All targets matched.");
-  await expect(page.locator(".cb-signal-lost")).toBeHidden();
+  await expect(page.locator(".cb-signal-lost")).toBeVisible();
+  await expect(page.locator(".cb-signal-lost")).toContainText("Connection closed");
   await expect(page.locator(".cb-board")).not.toHaveClass(/cb-timeout/);
   await expect(page.locator(".cb-matched")).toHaveCount(2);
   await expect.poll(() => page.evaluate(() => window.sent.length)).toBe(1);
@@ -484,6 +485,83 @@ for (const lang of ["de", "en"]) {
     await expect(icons.first()).toHaveAttribute("data-objective", "target");
     await expect(page.locator(".cb-targets strong").first()).toHaveText("<img src=x onerror=alert(1)>");
     await expect(page.locator(".cb-board img")).toHaveCount(0);
+  });
+}
+
+test("GM symbol preview follows edited target text, prioritizes devices and never lacks an icon", async ({ page }) => {
+  await page.goto("/preview/");
+  await page.locator("#open").click();
+  const name = page.locator('[name="objective1"]');
+  const icon = page.locator(".cb-objective-preview .cb-target-icon").first();
+  for (const [type, labels] of [
+    ["camera", ["Control / Kameras ausschalten", "Surveillance feed"]],
+    ["drone", ["Backdoor / Drohne übernehmen", "Drone uplink"]],
+    ["turret", ["Geschütz deaktivieren", "Turret targeting"]],
+    ["vehicle", ["Fahrzeug übernehmen", "Vehicle ignition"]],
+    ["power", ["Stromversorgung abschalten", "Power generator"]],
+    ["comms", ["Funk stören", "Satellite communications"]],
+    ["implant", ["Cyberware manipulieren", "Neural implant"]],
+    ["finance", ["Konto leeren", "Credit transfer"]],
+    ["security", ["ICE umgehen", "Firewall disable"]],
+    ["sensor", ["Ortung abschalten", "Radar scanner"]],
+    ["password", ["Passwort entschlüsseln", "Decrypt encryption"]],
+    ["door", ["Tür öffnen", "Access gate"]],
+    ["data", ["Archiv auslesen", "Data storage"]],
+    ["control", ["Netzwerk übernehmen", "Control node"]],
+    ["target", ["Unbekanntes Ziel", "Unknown objective", ""]]
+  ]) {
+    for (const label of labels) {
+      await name.fill(label);
+      await expect(icon).toHaveAttribute("data-objective", type);
+      await expect(icon.locator("path")).toHaveAttribute("d", /.+/);
+    }
+  }
+  await name.fill("Control / Kameras ausschalten");
+  await page.locator('[type="submit"]').click();
+  await expect(page.locator(".cb-target-icon").first()).toHaveAttribute("data-objective", "camera");
+});
+
+for (const outcome of ["won", "full-buffer", "dead-end", "jacked-out"]) {
+  test(`${outcome} shows the same terminal interference without claiming a forced ejection`, async ({ page }) => {
+    await page.goto("/preview/?lang=en");
+    await page.evaluate(async ending => {
+      const { generateChallenge } = await import("/scripts/engine.mjs");
+      const { openBoard } = await import("/scripts/ui.mjs");
+      const strings = (await (await fetch("/lang/en.json")).json()).CB;
+      const challenge = generateChallenge({
+        size: 4, buffer: ending === "full-buffer" ? 8 : 14, targetCount: 1, sequenceLength: 2, seconds: 60
+      }).challenge;
+      challenge.matrix = challenge.matrix.map(row => row.map(() => "0A"));
+      challenge.targets = [ending === "won" ? ["0A", "0A"] : ["5D", "5D"]];
+      window.reports = [];
+      const board = openBoard(challenge, { t: key => strings[key], onSubmit: async result => window.reports.push(result) });
+      if (ending === "jacked-out") {
+        // Inspect the finished frame immediately before its normal close removes it.
+        const close = board.close.bind(board);
+        board.close = () => {
+          window.finalSignal = {
+            visible: getComputedStyle(board.querySelector(".cb-signal-lost")).display,
+            animation: getComputedStyle(board.querySelector(".cb-matrix"), "::after").animationName
+          };
+          close();
+        };
+      }
+    }, outcome);
+    if (outcome === "jacked-out") {
+      await page.locator(".cb-jack").click();
+      expect(await page.evaluate(() => window.finalSignal)).toEqual({ visible: "grid", animation: "cb-signal-tear" });
+      await expect(page.locator(".cb-board")).toHaveCount(0);
+    } else {
+      const moves = outcome === "won" ? [[0, 0], [1, 0]] :
+        [[0, 0], [1, 0], [1, 1], [0, 1], [0, 2], [1, 2], [1, 3], [0, 3]];
+      for (const [row, col] of moves) await page.locator(".cb-cell").nth(row * 4 + col).click();
+      await expect(page.locator(".cb-signal-lost")).toBeVisible();
+      await expect(page.locator(".cb-signal-lost")).toContainText("Connection closed");
+      await expect(page.locator(".cb-signal-lost")).not.toContainText("Ejected");
+      expect(await page.locator(".cb-matrix").evaluate(node => getComputedStyle(node, "::after").animationName)).toBe("cb-signal-tear");
+      await expect(page.locator(".cb-jack")).toBeEnabled();
+    }
+    expect(await page.evaluate(() => window.reports.map(result => result.outcome))).toEqual([outcome]);
   });
 }
 

@@ -33,14 +33,39 @@ function dialog(title, t) {
 }
 
 function objectiveIcon(name) {
-  const label = name.toLowerCase();
-  const type = /backdoor|password|passwort/.test(label) ? "password"
-    : /eye-dee|daten|data/.test(label) ? "data"
-    : /control|steuer|knoten|node/.test(label) ? "control" : "target";
+  const label = name.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const categories = [
+    ["camera", /kamera|camera|cctv|uberwachung|surveillance/],
+    ["drone", /drohne|drone|robot|android|bot\b/],
+    ["turret", /geschutz|turret|waffe|weapon|munition/],
+    ["vehicle", /fahrzeug|vehicle|auto\b|car\b|motorrad|motorcycle/],
+    ["power", /strom|power|energie|energy|generator|reaktor|reactor|beleuchtung|light/],
+    ["comms", /funk|radio|comm|kommunikation|signal|satellit|satellite|antenne|antenna/],
+    ["implant", /implant|cyberware|neural|biometr|biometric|medizin|medical/],
+    ["finance", /konto|account|credit|kredit|bank|zahlung|payment|eddies|wallet/],
+    ["security", /firewall|\bice\b|alarm|sicherheit|security|schutz|defen[cs]e/],
+    ["sensor", /sensor|radar|scanner|scan\b|ortung|tracking/],
+    ["password", /backdoor|password|passwort|verschlussel|encrypt|decrypt|chiffre|cipher/],
+    ["door", /tur\b|turen|turschloss|door|schleuse|\bgate\b|zugang|\baccess\b(?!\s+(?:node|point))|aufzug|elevator/],
+    ["data", /eye-dee|daten|data|datei|file|archiv|archive|speicher|storage|server/],
+    ["control", /control|steuer|knoten|node|netzwerk|network|terminal|access point/]
+  ];
+  const type = categories.find(([, pattern]) => pattern.test(label))?.[0] ?? "target";
   const paths = {
     password: "M6 10V7a6 6 0 0 1 12 0v3M4 10h16v12H4zM12 14v4",
     data: "M4 3h16v18H4zM8 7h8M8 11h8M8 15h3M14 15h2M8 18h8",
     control: "M9 9h6v6H9zM12 2v7M12 15v7M2 12h7M15 12h7M9 2h6M9 22h6M2 9v6M22 9v6",
+    camera: "M3 5h12l3 7H6zM18 7l3-2v8l-3-2M9 12v6H4M7 18v3",
+    drone: "M9 9h6v6H9zM9 9L5 5M15 9l4-4M9 15l-4 4M15 15l4 4M2 3h6v4H2zM16 3h6v4h-6zM2 17h6v4H2zM16 17h6v4h-6z",
+    turret: "M5 13h12v5H5zM11 13V8h10V5H8v8M8 18l-3 4M14 18l3 4M3 22h16",
+    vehicle: "M4 10l3-6h10l3 6M3 10h18v8H3zM5 18v3h3v-3M16 18v3h3v-3M6 13h3M15 13h3",
+    power: "M13 2L4 14h7l-1 8 10-13h-7z",
+    comms: "M12 9v13M7 22h10M9 9a3 3 0 1 1 6 0a3 3 0 1 1-6 0M6 4a8 8 0 0 0 0 10M18 4a8 8 0 0 1 0 10M3 1a12 12 0 0 0 0 16M21 1a12 12 0 0 1 0 16",
+    implant: "M7 3h10v5h4v8h-4v5H7v-5H3V8h4zM7 12h3l2-4 2 8 2-4h2",
+    finance: "M3 5h18v14H3zM3 9h18M6 15h4M15 12v5M13 13h4v3h-4",
+    security: "M12 2l9 4v6c0 5-5 8-9 10-4-2-9-5-9-10V6zM7 12l3 3 7-7",
+    sensor: "M12 3a9 9 0 1 0 9 9M12 7a5 5 0 1 0 5 5M12 12l8-8M12 10v4M10 12h4",
+    door: "M4 22V2h15v20M8 22V5l8-2v19M12 13h1M2 22h20",
     target: "M12 2v4M12 18v4M2 12h4M18 12h4M12 6a6 6 0 1 0 0 12a6 6 0 1 0 0-12M10 12h4"
   };
   const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -116,12 +141,11 @@ export function openBoard(challenge, { t, onSubmit = null, onError = console.err
     grid.append(cell);
     return cell;
   }));
+  const signalText = element("strong", { text: t("ended") });
+  const signalCode = element("small", { text: "NET / LINK_CLOSED" });
   grid.append(element("div", {
     className: "cb-signal-lost", attributes: { "aria-hidden": "true" }
-  }, [
-    element("strong", { text: t("systemEjected") }),
-    element("small", { text: "ERR / NET_LINK_TERMINATED" })
-  ]));
+  }, [signalText, signalCode]));
   const targets = element("ol", { className: "cb-targets" });
   const targetNodes = puzzle.challenge.targets.map((sequence, index) => {
     const name = puzzle.challenge.names?.[index] ?? `${t("objective")} ${index + 1}`;
@@ -209,6 +233,8 @@ export function openBoard(challenge, { t, onSubmit = null, onError = console.err
     root.classList.toggle("cb-failed", ended && !puzzle.matched.some(Boolean));
     root.classList.toggle("cb-critical", !ended && remaining <= 10);
     root.classList.toggle("cb-timeout", currentStatus === "timeout");
+    signalText.textContent = t(currentStatus === "timeout" ? "systemEjected" : "ended");
+    signalCode.textContent = currentStatus === "timeout" ? "ERR / NET_LINK_TERMINATED" : "NET / LINK_CLOSED";
     bufferCount.textContent = `${puzzle.moves.length}/${config.buffer}`;
     const legal = new Set(legalCells(puzzle.challenge.config.size, puzzle.moves).map(cell => `${cell.row}:${cell.col}`));
     for (let row = 0; row < cells.length; row++) {
@@ -271,9 +297,13 @@ export function openConfiguration({
   const names = ["backdoor", "data", "control"].map((key, index) => element("input", {
     attributes: { name: `objective${index + 1}`, type: "text", maxlength: 120, value: t(key) }
   }));
-  const nameLabels = names.map((input, index) => element("label", {}, [
-    element("span", { text: `${t("objective")} ${index + 1}` }), input
-  ]));
+  const nameLabels = names.map((input, index) => {
+    const preview = element("span", { className: "cb-objective-preview" }, [objectiveIcon(input.value), input]);
+    input.addEventListener("input", () => preview.firstChild.replaceWith(objectiveIcon(input.value)));
+    return element("label", {}, [
+      element("span", { text: `${t("objective")} ${index + 1}` }), preview
+    ]);
+  });
   form.append(...nameLabels);
   const participant = element("select");
   participant.name = "participant";

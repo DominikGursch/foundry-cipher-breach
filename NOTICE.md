@@ -2,7 +2,7 @@
 
 Cipher Breach. Copyright (c) 2026 DominikGursch.
 
-All original source code, styles, translations, documentation and the original text-only interface in this repository are licensed under the MIT License in `LICENSE`. Retain the copyright and permission notice in copies or substantial portions. No third-party artwork, icon packs, fonts, sound recordings, templates, screenshots or game rules are bundled. There is no separate image asset license because this release contains no image assets.
+All original source code, styles, translations, documentation and the interface, including its independently drawn inline SVG symbols, in this repository are licensed under the MIT License in `LICENSE`. Retain the copyright and permission notice in copies or substantial portions. No third-party artwork, icon packs, fonts, sound recordings, templates, screenshots or game rules are bundled. There is no separate image asset license because this release contains no external image assets. Public [Lucide icon categories](https://github.com/lucide-icons/lucide/tree/main/icons) were consulted for common technical motifs; their SVG paths are not bundled or copied.
 
 MIT applies only to original contributions; it grants no rights to Cyberpunk, Cyberpunk RED, Cyberpunk 2077, Foundry Virtual Tabletop, their trademarks, logos or any third-party intellectual property. Do not interpret the MIT commercial-use permission as a license to commercialize third-party fan content. This module is distributed as a free, unofficial fan project.
 
