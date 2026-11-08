@@ -50,6 +50,8 @@
     "runnerDetected": "Gegnerischer Runner: Trace abgeschlossen, Hack erkannt.",
     "runnerNotDetected": "Gegnerischer Runner: Trace unvollständig, Hack nicht erkannt.",
     "play": "Einstöpseln",
+    "started": "Cipher Breach: Runner eingestöpselt.",
+    "alreadyStarted": "Dieser Breach wurde bereits gestartet. Bitte die SL um einen neuen.",
     "review": "Ungeprüftes Ergebnis ansehen",
     "consistent": "Züge und Ergebnis sind logisch mit dem aktuell verfügbaren SL-Rätsel vereinbar. Das ist kein verbindlicher Erfolg und kein Nachweis der vergangenen Zeit.",
     "outcome": "Gemeldetes Ergebnis",

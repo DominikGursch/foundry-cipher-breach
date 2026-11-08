@@ -45,4 +45,4 @@ jobs:
             dist/module.json "dist/foundry-cipher-breach-${RELEASE_TAG}.zip" \
             --verify-tag \
             --title "Cipher Breach ${RELEASE_TAG}" \
-            --notes "Kompatibilität mit Foundry VTT 12 und Cyberpunk RED 0.92.4 wurde anhand der Schnittstellen und mit Testdoubles geprüft. Ein echter Foundry-Mehrspieler-Livetest steht noch aus. Spielberichte sind ungeprüft; die SL entscheidet über die Folgen."
+            --notes "Foundry 12.343 und Cyberpunk RED 0.92.4: Der vorherige Modulstand wurde laut Nutzer live getestet; neue Änderungen sind automatisiert geprüft. Spielberichte sind ungeprüft; die SL entscheidet über die Folgen. Details siehe README."

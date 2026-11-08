@@ -50,6 +50,8 @@
     "runnerDetected": "Enemy runner: trace complete, hack detected.",
     "runnerNotDetected": "Enemy runner: trace incomplete, hack not detected.",
     "play": "Jack in",
+    "started": "Cipher Breach: runner connected.",
+    "alreadyStarted": "This breach has already been used. Ask the GM for a new one.",
     "review": "Review unverified result",
     "consistent": "The reported moves and outcome are logically consistent with the currently available GM-authored challenge. This is not an authoritative success or proof of elapsed time.",
     "outcome": "Reported outcome",

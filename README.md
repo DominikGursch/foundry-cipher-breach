@@ -17,7 +17,7 @@ Ein kostenloses, in Deutsch und Englisch verfügbares Breach-Matrixrätsel für 
 
 Die Vorschau verwendet **dieselbe Engine, dieselben UI-Komponenten und dieselben Styles** wie das Modul. Sie simuliert SL-Konfiguration, Charakterwerte, Spieleröffnung und Ergebnisanzeige in einem Browser, **nicht** Foundry-Berechtigungen, Netzwerkzustellung oder echtes Mehrspielerverhalten.
 
-GitHub Pages wird unter **Repository Settings > Pages > Deploy from a branch** eingerichtet: Branch `dominikgursch-effective-adventure`, Ordner `/ (root)`. Aufrufe der obigen URL verwenden `/preview/`, nicht die Repository-Startseite. Änderungen am konfigurierten Branch werden automatisch veröffentlicht; `.nojekyll` verhindert eine Jekyll-Verarbeitung.
+GitHub Pages wird unter **Repository Settings > Pages > Deploy from a branch** eingerichtet; der aktuell eingestellte Quellbranch ist in den Pages-Einstellungen ersichtlich, der Ordner ist `/ (root)`. Aufrufe der obigen URL verwenden `/preview/`, nicht die Repository-Startseite. Änderungen am konfigurierten Branch werden automatisch veröffentlicht; `.nojekyll` verhindert eine Jekyll-Verarbeitung.
 
 Unter **[Actions](https://github.com/DominikGursch/foundry-cipher-breach/actions)** läuft für Pushes und Pull Requests **Test and package**: Engine-/Pakettests, Chromium-Browsertests und Erstellen des Foundry-ZIPs. Das Artefakt `foundry-cipher-breach` enthält das Modul-ZIP und die Manifestdatei zum Download. Es ist kein veröffentlichter Foundry-Release.
 
@@ -32,13 +32,11 @@ https://github.com/DominikGursch/foundry-cipher-breach/releases/latest/download/
 ```
 
 2. **Install** wählen und **Cipher Breach** anschließend in der Welt unter **Manage Modules** aktivieren.
-3. Als SL den **Terminal-Knopf in der linken Haupt-Werkzeugleiste** drücken. Alternativ den Terminal-Knopf im Token-Werkzeugbereich oder **Einstellungen > Einstellungen konfigurieren > Moduleinstellungen > Cipher Breach** verwenden.
+3. Als SL den **Terminal-Knopf in der linken Haupt-Werkzeugleiste** drücken. Alternativ **Einstellungen > Einstellungen konfigurieren > Moduleinstellungen > Cipher Breach** verwenden.
 
 Der stabile Manifest-Link verweist auf den neuesten regulären [Release](https://github.com/DominikGursch/foundry-cipher-breach/releases/latest). Foundry kann darüber auch spätere Updates suchen und installieren. Der alte Vorabrelease `v0.1.0` ist veraltet und sollte nicht installiert werden.
 
-**Kompatibilitätsprüfung für Foundry 12.343 / CPRed 0.92.4:** [CPRed 0.92.4](https://foundryvtt.com/packages/cyberpunk-red-core) gibt Foundry 12 als unterstützte Version an. Das Netrunner-Rollen-Item dieses Releases verwendet `type: "role"`, `system.mainRoleAbility: "Interface"` und `system.rank`; diese Felder liest das Modul. Auch die v12-Schnittstellen für Einstellungen, Szenenwerkzeuge, Chat und Collections wurden anhand der öffentlichen Dokumentation geprüft. Insbesondere verwendet der Chat-Adapter das seit v12 gültige [`ChatMessage.author`](https://github.com/foundryvtt/foundryvtt/issues/9843) statt des alten `user`-Felds. Ein lokaler Test simuliert die Adapter-Schnittstellen, ersetzt aber **keinen echten Foundry-Server oder Mehrspieler-Livetest**. Die Mindestversion des Moduls ist v12; eine neuere Foundry-Version ist nicht als geprüft ausgewiesen.
-
-**„Compatibility unknown“:** Das Manifest enthält `compatibility.minimum: "12"`, aber absichtlich noch kein `compatibility.verified`. Im Manifest des [Foundry Git Sync-Moduls](https://github.com/DominikGursch/foundryvtt-git-sync) ist dagegen `verified: "12"` gesetzt. Cipher Breach wurde noch nicht auf einem echten Foundry-Server im Mehrspielerbetrieb geprüft. Das Feld `verified` soll laut [Foundry-Dokumentation](https://foundryvtt.com/article/updating/) eine tatsächlich überprüfte Version ausweisen; das bloße Eintragen von `12` würde die Warnung ändern, aber keine Kompatibilität herstellen. Nach erfolgreichem Livetest kann die konkret geprüfte Version eingetragen und als neuer Release veröffentlicht werden.
+**Kompatibilität:** Der bisherige Modulstand wurde laut Rückmeldung des Nutzers mit Foundry **12.343** und Cyberpunk RED **0.92.4** live getestet. Das Manifest kennzeichnet daher Foundry `12.343` als `verified`; neuere Versionen sind nicht als geprüft ausgewiesen. Die Einmalstart-Funktion dieser Version wurde zusätzlich mit Testdoubles geprüft und sollte im nächsten Live-Test überprüft werden. CPRed verwendet für die Netrunner-Rolle `type: "role"`, `system.mainRoleAbility: "Interface"` und `system.rank`; diese Felder liest das Modul.
 
 Für den ersten echten Test eine Sicherung der Welt anlegen, das Modul aktivieren und mit zwei verbundenen Konten prüfen: SL öffnet den Terminal-Knopf, wählt den zugewiesenen Netrunner und kontrolliert den vorgeschlagenen Interface-Rang; der Spieler öffnet bzw. erhält die Einladung und stöpselt aus; anschließend muss die Ergebnisnachricht für Spieler und SL sichtbar sein. Wird nichts gemeldet, Chat-Erstellungsrechte und Browserkonsole prüfen. Es werden keine Charakterwerte oder Weltobjekte verändert.
 
@@ -48,7 +46,7 @@ Die SL wählt **Basis-DV, manuelle Erschwernisse, bis zu drei benannte Ziele und
 
 Der Interface-Rang wird aus dem zugewiesenen Charakter gelesen: eingebettetes Item `type: "role"`, Name Netrunner bzw. `system.mainRoleAbility` mit Interface, Rang in `system.rank`. Auch Rang **0** bleibt erhalten. Fehlen Charakter oder Rolle, zeigt die Oberfläche dies ausdrücklich an und schlägt Interface 0 vor; die SL kann den Rang ändern. Andere Systeme können den Rang manuell angeben; kein System wird vorausgesetzt und kein Charakterwert wird geschrieben.
 
-Die SL sendet eine GM-eigene Chat-Einladung. Erst wenn der zugewiesene Spieler **Einstöpseln / Jack in** drückt, öffnet sich das Rätsel und **startet der Timer**. Offline-Spieler können die behaltene Chat-Einladung nach dem Wiederverbinden öffnen. Nur der Teilnehmer erhält den Spielknopf; derselbe Chat-Eintrag öffnet nicht mehrere gleichzeitige Spielfenster.
+Die SL sendet eine GM-eigene Chat-Einladung. Erst wenn der zugewiesene Spieler **Einstöpseln / Jack in** drückt, öffnet sich das Rätsel und **startet der Timer**. Offline-Spieler können die behaltene Chat-Einladung nach dem Wiederverbinden öffnen. Nach dem Start ist die Einladung verbraucht; für einen weiteren Versuch erstellt die SL eine neue.
 
 - Erster Code: oberste Zeile. Danach abwechselnd Spalte und Zeile der letzten Auswahl; keine Zelle doppelt.
 - Der Countdown beginnt **beim Öffnen des Spielfelds**, bewusst früher als in der Referenz. Abwarten zählt zur Laufzeit; ohne Zug endet der Breach ebenfalls bei Zeitablauf und wird gemeldet.
@@ -101,7 +99,7 @@ Die SL setzt drei Zähler (je 0–10, Standard 0):
 
 **Effektiver DV:** `Basis-DV + repeatedFailures + 2 * pressureConditions + 3 * enemyRunners`. Ungerade Ergebnisse werden nicht gerundet. Werte über DV20 werden bis zum maximal möglichen DV80 weitergerechnet: Die Matrix bleibt höchstens 8×8, aber der Zeitdruck wächst weiter. Es gibt keine stille Begrenzung des effektiven DV.
 
-Für einen Neuversuch erstellt die SL eine **neue Einladung** und erhöht den Fehlerzähler nach einem absoluten Fehlschlag. Sie erhält eine neu generierte Matrix; die alte Einladung bleibt unverändert. Fehlversuche werden nicht automatisch gezählt, Teil-Erfolge nicht automatisch als absolute Fehlschläge gewertet und alte Einladungen nicht automatisch gesperrt. Die SL entscheidet, welche Einladung verwendet werden darf.
+Für einen Neuversuch erstellt die SL eine **neue Einladung** und erhöht den Fehlerzähler nach einem absoluten Fehlschlag. Sie erhält eine neu generierte Matrix; gestartete Einladungen sind verbraucht. Fehlversuche werden nicht automatisch gezählt und Teil-Erfolge nicht automatisch als absolute Fehlschläge gewertet.
 
 **Puffer:** `4 + Math.ceil(Interface-Rang / 2)`
 
@@ -182,7 +180,9 @@ Optional `rank: 6` zum Überschreiben sowie `repeatedFailures: 1`, `pressureCond
 
 **Ergebnisse sind ungeprüfte Spielerangaben, keine authentifizierten Erfolge.** Vor der Anzeige wird der Zugverlauf automatisch gegen das aktuell verfügbare GM-eigene Chat-Dokument nachgespielt. Geprüft werden begrenzte Datenschemata, Teilnehmer/angegebener Autor, legale Züge, Zieltreffer, Endzustand und behauptete Zeitgrenzen. Das beweist weder echte Laufzeit noch ehrliches Spielen oder kryptografische Identität.
 
-Es gibt keine eigenen Socket-Befehle, versteckten Welt-Settings, Remote-Code oder privilegierten Aktionen aus Spielerangaben. Core-Chat-Dokumente übernehmen Zustellung und Sichtbarkeit. Spieler können die Matrix untersuchen, neu versuchen oder ihre Clients verändern. Ausstöpseln/Escape beendet den Lauf mit Bericht; Neuladen verliert ihn ohne Bericht. Es gibt keine Fortsetzung; Wiederholungen werden nicht dauerhaft verhindert. Es gibt keine autoritative Startuhr oder Server-Zeitstempel pro Zug. Wer die Einladung sehen kann, kann Matrix und Ziele lesen. Bearbeiten/Löschen einer Quelle kann Berichte ungültig machen; fehlende oder fremdverfasste Quellen werden abgelehnt.
+Es gibt keine eigenen Socket-Befehle, versteckten Welt-Settings, Remote-Code oder privilegierten Aktionen aus Spielerangaben. Core-Chat-Dokumente übernehmen Zustellung und Sichtbarkeit. Beim Start wird eine ausgeblendete, vom Spieler verfasste Chat-Nachricht als Verbrauchsmarkierung gespeichert; vorhandene Ergebnisnachrichten zählen ebenfalls. So bleibt die Einladung nach Neuladen gesperrt. Wird eine Markierung gelöscht, kann die Sperre verloren gehen; gleichzeitige Starts auf mehreren Clients sind nicht atomar und manipulierte Clients können die Sperre umgehen. Ausstöpseln/Escape beendet den Lauf mit Bericht; Neuladen verliert ihn ohne Bericht und die SL muss eine neue Einladung erstellen. Es gibt keine autoritative Startuhr oder Server-Zeitstempel pro Zug. Wer die Einladung sehen kann, kann Matrix und Ziele lesen.
+
+**Aufräumen:** Einladungen, ausgeblendete Startmarkierungen und Ergebnisse bleiben als Chat-Dokumente in der Foundry-Welt gespeichert. Ein separater Modul-Cache oder eine automatische Löschung existiert nicht. Die SL kann den Chat bei Bedarf mit den Foundry-Chatfunktionen löschen; dabei gehen diese Einträge und Sperrmarkierungen verloren. Wird eine Einladung gelöscht, lassen sich zugehörige Ergebnisse nicht mehr überprüfen und anzeigen. Laufende Fenster und ihre Timer existieren nur im jeweiligen Browser.
 
 ## Entwicklung
 
@@ -201,11 +201,11 @@ Lokale Vorschau: `http://127.0.0.1:8080/preview/`. Optional `PORT=8090 npm run p
 
 Tests decken alle unterstützten DV-/Rang-/Zielkombinationen, Referenzformeln, eindeutige und einzeln lösbare Ziele, gemeinsame Lösbarkeit bei ausreichendem Puffer, falsche Einstiege bei hohen DVs, Alt-Schemata, Timer, Überlappung, Teilerfolge und Paketformat ab. Der DV20-/Rang-0-Test prüft 100 reproduzierbare Rätsel auf unterschiedliche Ziele und höchstens einen Zieltreffer pro Vierer-Puffer. Chromium prüft Konfiguration, Charakterauslesung, Countdown, Hervorhebungen, automatisches Melden, Fehlerwiederholung, DE-/EN-Parität und mobile Darstellung. Foundry-Hooks/Berechtigungsgrenzen werden mit einem Adapter-Testdouble geprüft, **nicht mit einem laufenden Foundry-Server**.
 
-`npm run package` erzeugt `dist/foundry-cipher-breach-v<VERSION>.zip` und `dist/module.json`. Das ZIP enthält ausschließlich Laufzeit, Manifest und Lizenz-/Dokumentationsdateien; `dist` ist unversioniert. Für einen neuen regulären Release `version` in `module.json`, `package.json` und `package-lock.json` sowie die versionsgebundene `download`-URL in `module.json` aktualisieren und die Änderungen testen und committen. Danach auf dem gewünschten Commit einen passenden neuen Tag erstellen und pushen, beispielsweise für Version 0.2.3:
+`npm run package` erzeugt `dist/foundry-cipher-breach-v<VERSION>.zip` und `dist/module.json`. Das ZIP enthält ausschließlich Laufzeit, Manifest und Lizenz-/Dokumentationsdateien; `dist` ist unversioniert. Für einen neuen regulären Release `version` in `module.json`, `package.json` und `package-lock.json` sowie die versionsgebundene `download`-URL in `module.json` aktualisieren und die Änderungen testen und committen. Danach auf dem gewünschten Commit einen passenden neuen Tag erstellen und pushen, beispielsweise für Version 0.2.4:
 
 ```sh
-git tag v0.2.3
-git push origin v0.2.3
+git tag v0.2.4
+git push origin v0.2.4
 ```
 
 Der Workflow **Release Foundry module** prüft die Tag-/Versionsübereinstimmung, führt Node- und Browsertests aus und veröffentlicht erst danach Manifest und ZIP als GitHub-Release. Vor Veröffentlichung die Revision prüfen und möglichst einen echten Foundry-v12-Test durchführen. Der Workflow erstellt keine Commits und verändert keine Branches. Bei einem fehlgeschlagenen Lauf vor einem erneuten Start prüfen, ob bereits ein unvollständiger Release angelegt wurde.

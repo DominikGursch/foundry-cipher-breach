@@ -75,6 +75,8 @@ test("countdown starts on opening, includes time before the first code and repor
   await page.locator(".cb-jack").click();
   await expect(page.locator(".cb-board")).toHaveCount(0);
   await expect(page.locator("#results .cb-report")).toHaveCount(1);
+  await expect(page.locator("#results button")).toBeDisabled();
+  await expect(page.locator("#results button")).toContainText("bereits gestartet");
 });
 
 test("sequence prefix, hover feedback and final-slot win work in the actual board", async ({ page }) => {
@@ -167,8 +169,11 @@ async function mockFoundry(page) {
     users.contents = users;
     const strings = (await (await fetch("/lang/en.json")).json()).CB;
     const module = {};
+    class Messages extends Map {
+      some(fn) { return [...this.values()].some(fn); }
+    }
     window.game = {
-      user: users[0], users, messages: new Map(),
+      user: users[0], users, messages: new Messages(),
       modules: new Map([["foundry-cipher-breach", module]]),
       settings: { registerMenu: (namespace, key, options) => { window.registeredMenu = { namespace, key, options }; } },
       i18n: { localize: key => strings[key.slice(3)] }
@@ -195,7 +200,7 @@ async function mockFoundry(page) {
   });
 }
 
-test("Foundry v12 settings menu and token control open the configuration", async ({ page }) => {
+test("Foundry v12 settings menu opens the configuration", async ({ page }) => {
   await mockFoundry(page);
   const menu = await page.evaluate(() => ({
     namespace: window.registeredMenu.namespace,
@@ -208,13 +213,6 @@ test("Foundry v12 settings menu and token control open the configuration", async
   await expect(page.locator(".cb-config")).toBeVisible();
   await page.locator(".cb-config").locator("..").locator(".cb-close").click();
   await expect(page.locator(".cb-config")).toHaveCount(0);
-  await page.evaluate(() => {
-    const controls = [{ name: "token", tools: [] }];
-    Hooks.call("getSceneControlButtons", controls);
-    controls[0].tools[0].onClick();
-  });
-  await expect(page.locator(".cb-config")).toBeVisible();
-  await expect(page.locator('[name="rank"]')).toHaveValue("7");
 });
 
 test("GM can open the breach directly from the primary scene toolbar", async ({ page }) => {
@@ -254,20 +252,16 @@ test("Foundry adapter restricts launch and interaction and uses core chat for au
   const shared = await page.evaluate(async () => {
     const controls = [{ name: "token", tools: [] }];
     Hooks.call("getSceneControlButtons", controls);
-    const modern = { tokens: { tools: {} } };
-    Hooks.call("getSceneControlButtons", modern);
     const api = game.modules.get("foundry-cipher-breach").api;
     const message = await api.start({ user: "runner", dv: 10, names: ["Password", "Data", "Control"] });
     window.challengeMessage = message;
     return {
-      oldButton: controls[0].tools[0].name,
-      newButton: typeof modern.tokens.tools.cipherBreach.onChange,
+      tools: controls[0].tools.length,
       config: message.flags["foundry-cipher-breach"].challenge.config,
       whisper: message.whisper, boards: document.querySelectorAll(".cb-board").length
     };
   });
-  expect(shared.oldButton).toBe("cipherBreach");
-  expect(shared.newButton).toBe("function");
+  expect(shared.tools).toBe(0);
   expect(shared.config.rank).toBe(7);
   expect(shared.config.buffer).toBe(8);
   expect(shared.config.seconds).toBe(49);
@@ -289,7 +283,9 @@ test("Foundry adapter restricts launch and interaction and uses core chat for au
     Hooks.call("createChatMessage", window.challengeMessage);
     Hooks.call("createChatMessage", window.challengeMessage);
     const root = document.createElement("div");
-    root.className = "message-content";
+    root.className = "message";
+    root.dataset.messageId = window.challengeMessage.id;
+    root.innerHTML = '<div class="message-content"></div>';
     document.body.append(root);
     Hooks.call("renderChatMessage", window.challengeMessage, root);
   });
@@ -299,12 +295,27 @@ test("Foundry adapter restricts launch and interaction and uses core chat for au
   await page.getByRole("button", { name: "Jack in", exact: true }).click();
   await expect(page.locator(".cb-board")).toHaveCount(1);
   await expect(page.locator(".cb-time")).toHaveText("49.0s");
-  await page.evaluate(() => document.querySelector(".message-content button").click());
+  await expect(page.getByRole("button", { name: "Jack in", exact: true })).toHaveCount(0);
+  await expect(page.locator(".message-content")).toContainText("already been used");
   await expect(page.locator(".cb-board")).toHaveCount(1);
   await page.clock.runFor(1000);
   await expect(page.locator(".cb-time")).toHaveText("48.0s");
   await page.getByRole("button", { name: "Jack out", exact: true }).click();
-  await expect.poll(() => page.evaluate(() => game.messages.size)).toBe(2);
+  await expect.poll(() => page.evaluate(() => game.messages.size)).toBe(3);
+  await page.evaluate(() => {
+    const root = document.querySelector(".message");
+    root.replaceChildren(document.createElement("div"));
+    root.firstChild.className = "message-content";
+    Hooks.call("renderChatMessage", window.challengeMessage, root);
+  });
+  await expect(page.getByRole("button", { name: "Jack in", exact: true })).toHaveCount(0);
+  const markerHidden = await page.evaluate(() => {
+    const marker = [...game.messages.values()].find(m => m.getFlag("foundry-cipher-breach", "started"));
+    const root = document.createElement("div");
+    Hooks.call("renderChatMessage", marker, root);
+    return root.hidden;
+  });
+  expect(markerHidden).toBe(true);
   const report = await page.evaluate(() => {
     const message = [...game.messages.values()].at(-1);
     const root = document.createElement("div");
@@ -329,6 +340,49 @@ test("Foundry adapter restricts launch and interaction and uses core chat for au
   });
   expect(forged).toContain("Invalid or unavailable Cipher Breach data");
   expect(forged).not.toContain("Not reached: Password");
+});
+
+test("saved start markers block reopening even without a result after a fresh render", async ({ page }) => {
+  await mockFoundry(page);
+  await page.evaluate(async () => {
+    window.challengeMessage = await game.modules.get("foundry-cipher-breach").api.start({ user: "runner" });
+    game.user = game.users.get("runner");
+    await ChatMessage.create({
+      author: "runner", content: "started", whisper: ["runner", "gm", "gm2"],
+      flags: { "foundry-cipher-breach": { started: { challengeMessageId: window.challengeMessage.id } } }
+    });
+    const root = document.createElement("div");
+    root.className = "message-content";
+    document.body.append(root);
+    Hooks.call("renderChatMessage", window.challengeMessage, root);
+  });
+  await expect(page.locator(".message-content")).toContainText("already been used");
+  await expect(page.getByRole("button", { name: "Jack in", exact: true })).toHaveCount(0);
+  await expect(page.locator(".cb-board")).toHaveCount(0);
+});
+
+test("start marker errors leave the invitation usable without starting the timer", async ({ page }) => {
+  await mockFoundry(page);
+  await page.evaluate(async () => {
+    window.challengeMessage = await game.modules.get("foundry-cipher-breach").api.start({ user: "runner" });
+    game.user = game.users.get("runner");
+    const root = document.createElement("div");
+    root.className = "message";
+    root.dataset.messageId = window.challengeMessage.id;
+    root.innerHTML = '<div class="message-content"></div>';
+    document.body.append(root);
+    Hooks.call("renderChatMessage", window.challengeMessage, root);
+    const create = ChatMessage.create;
+    window.restoreCreate = () => { ChatMessage.create = create; };
+    ChatMessage.create = async () => { throw new Error("Chat permission denied"); };
+  });
+  await page.getByRole("button", { name: "Jack in", exact: true }).click();
+  await expect(page.locator(".cb-board")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Jack in", exact: true })).toBeEnabled();
+  expect(await page.evaluate(() => window.notices.length)).toBe(1);
+  await page.evaluate(() => window.restoreCreate());
+  await page.getByRole("button", { name: "Jack in", exact: true }).click();
+  await expect(page.locator(".cb-board")).toHaveCount(1);
 });
 
 test("invitations render as short GM and runner messages, including older chat content", async ({ page }) => {
@@ -422,7 +476,7 @@ test("Foundry report fails closed if the source is removed, and forged invitatio
   await page.evaluate(() => game.messages.delete(window.challengeMessage.id));
   await page.getByRole("button", { name: "Jack out", exact: true }).click();
   await expect(page.locator(".cb-board")).toHaveCount(0);
-  expect(await page.evaluate(() => game.messages.size)).toBe(0);
+  expect(await page.evaluate(() => game.messages.size)).toBe(1);
   expect(await page.evaluate(() => window.notices.length)).toBe(1);
 });
 

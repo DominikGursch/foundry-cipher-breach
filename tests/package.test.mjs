@@ -40,7 +40,7 @@ test("manifest entry points exist, release URLs match, all runtime files are pac
   assert.equal(manifest.version, JSON.parse(await read("package.json")).version);
   assert.equal(manifest.version, JSON.parse(await read("package-lock.json")).version);
   assert.equal(manifest.compatibility.minimum, "12");
-  assert.equal(manifest.compatibility.verified, undefined);
+  assert.equal(manifest.compatibility.verified, "12.343");
   const base = `https://github.com/DominikGursch/foundry-cipher-breach/releases/download/v${manifest.version}`;
   assert.equal(manifest.manifest, "https://github.com/DominikGursch/foundry-cipher-breach/releases/latest/download/module.json");
   assert.equal(manifest.download, `${base}/foundry-cipher-breach-v${manifest.version}.zip`);

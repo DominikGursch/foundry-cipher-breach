@@ -59,30 +59,57 @@ async function start({
     names ?? ["backdoor", "data", "control"].slice(0, config.targetCount).map(t));
 }
 
-const boards = new Map();
-function play(messageId) {
+const starting = new Set();
+
+function wasStarted(messageId, participantId) {
+  return game.messages.some(message => message.author?.id === participantId &&
+    (message.getFlag(ID, "started")?.challengeMessageId === messageId ||
+     message.getFlag(ID, "result")?.challengeMessageId === messageId));
+}
+
+function refreshInvitation(messageId) {
+  for (const root of document.querySelectorAll(".message[data-message-id]")) {
+    if (root.dataset.messageId !== messageId) continue;
+    const message = game.messages.get(messageId);
+    if (message) renderChat(message, root);
+  }
+}
+
+async function play(messageId) {
   const current = game.messages.get(messageId);
   const live = challengeFrom(current);
   if (live.participantId !== game.user.id) throw new Error("Challenge participant changed.");
-  if (boards.has(messageId)) return boards.get(messageId);
-  const board = openBoard(live, {
-    t, onError: report,
-    onSubmit: async data => {
-      const source = game.messages.get(messageId);
-      const canonical = challengeFrom(source);
-      if (canonical.participantId !== game.user.id) throw new Error("Participant mismatch.");
-      replayResult(canonical, data);
-      await ChatMessage.create({
-        author: game.user.id,
-        content: note("resultCard"),
-        whisper: [...source.whisper.map(user => typeof user === "string" ? user : user.id)],
-        flags: { [ID]: { result: { challengeMessageId: source.id, data } } }
-      });
-    }
-  });
-  boards.set(messageId, board);
-  board.addEventListener("close", () => boards.delete(messageId), { once: true });
-  return board;
+  if (starting.has(messageId) || wasStarted(messageId, live.participantId)) {
+    refreshInvitation(messageId);
+    return;
+  }
+  starting.add(messageId);
+  try {
+    await ChatMessage.create({
+      author: game.user.id,
+      content: note("started"),
+      whisper: [...current.whisper.map(user => typeof user === "string" ? user : user.id)],
+      flags: { [ID]: { started: { challengeMessageId: messageId } } }
+    });
+    refreshInvitation(messageId);
+    return openBoard(live, {
+      t, onError: report,
+      onSubmit: async data => {
+        const source = game.messages.get(messageId);
+        const canonical = challengeFrom(source);
+        if (canonical.participantId !== game.user.id) throw new Error("Participant mismatch.");
+        replayResult(canonical, data);
+        await ChatMessage.create({
+          author: game.user.id,
+          content: note("resultCard"),
+          whisper: [...source.whisper.map(user => typeof user === "string" ? user : user.id)],
+          flags: { [ID]: { result: { challengeMessageId: source.id, data } } }
+        });
+      }
+    });
+  } finally {
+    starting.delete(messageId);
+  }
 }
 
 function chatButton(label, action) {
@@ -113,22 +140,11 @@ Hooks.once("ready", () => {
   game.modules.get(ID).api = Object.freeze({ open, start });
 });
 
-Hooks.on("getSceneControlButtons", controls => {
-  if (!game.user.isGM) return;
-  const tool = {
-    name: "cipherBreach", title: t("menuLabel"), icon: "fas fa-terminal",
-    button: true, visible: true,
-    onClick: () => { try { open(); } catch (error) { report(error); } }
-  };
-  if (Array.isArray(controls)) controls.find(control => control.name === "token")?.tools.push(tool);
-  else if (controls?.tokens?.tools) controls.tokens.tools.cipherBreach = { ...tool, onChange: tool.onClick, order: 99 };
-});
-
 Hooks.on("renderSceneControls", (_app, html) => {
   const root = html?.[0] ?? html;
   const list = root?.querySelector?.("ol.main-controls");
   if (!list) {
-    console.warn("Cipher Breach | Scene controls toolbar not found; use the token tool or settings menu.");
+    console.warn("Cipher Breach | Scene controls toolbar not found; use the settings menu.");
     return;
   }
   list.querySelector(".cb-scene-launch")?.remove();
@@ -158,14 +174,21 @@ function renderChat(message, html) {
   root.querySelector(".cb-chat")?.remove();
   const challengeFlag = message.getFlag(ID, "challenge");
   const resultFlag = message.getFlag(ID, "result");
-  if (!challengeFlag && !resultFlag) return;
+  const startedFlag = message.getFlag(ID, "started");
+  if (!challengeFlag && !resultFlag && !startedFlag) return;
   const container = element("div", { className: "cb-chat" });
   try {
+    if (startedFlag) {
+      root.hidden = true;
+      root.classList.add("cb-start-marker");
+      return;
+    }
     if (challengeFlag) {
       const challenge = challengeFrom(message);
       if (challenge.participantId === game.user.id) {
-        container.append(element("p", { text: t("challengeCard") }));
-        container.append(chatButton("play", () => play(message.id)));
+        const used = wasStarted(message.id, challenge.participantId);
+        container.append(element("p", { text: t(used ? "alreadyStarted" : "challengeCard") }));
+        if (!used) container.append(chatButton("play", () => play(message.id)));
       }
       if (game.user.isGM) {
         container.append(element("p", {
@@ -200,3 +223,7 @@ function renderChat(message, html) {
 }
 Hooks.on("renderChatMessage", renderChat);
 Hooks.on("renderChatMessageHTML", renderChat);
+Hooks.on("createChatMessage", message => {
+  const started = message.getFlag(ID, "started");
+  if (started?.challengeMessageId) refreshInvitation(started.challengeMessageId);
+});

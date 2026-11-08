@@ -28,19 +28,21 @@ try {
     t, onError, isGM: true, users,
     onLaunch: async (config, participantId, publicResult, names) => {
       const { challenge } = generateChallenge(config, { id: `demo-${Date.now()}`, participantId, names });
-      let board = null;
+      let used = false;
       const jackIn = element("button", { text: t("play"), attributes: { type: "button" } });
       jackIn.addEventListener("click", () => {
-        if (board) return;
+        if (used) return;
         try {
-          board = openBoard(challenge, {
+          openBoard(challenge, {
             t, onError,
             onSubmit: async data => {
               const result = replayResult(challenge, data);
               results.append(resultCard(challenge, result, { t }));
             }
           });
-          board.addEventListener("close", () => { board = null; }, { once: true });
+          used = true;
+          jackIn.disabled = true;
+          jackIn.textContent = t("alreadyStarted");
         } catch (error) { onError(error); }
       });
       results.replaceChildren(
