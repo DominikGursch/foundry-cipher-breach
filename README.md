@@ -17,7 +17,7 @@ Ein kostenloses, in Deutsch und Englisch verfügbares Breach-Matrixrätsel für 
 
 Die Vorschau verwendet **dieselbe Engine, dieselben UI-Komponenten und dieselben Styles** wie das Modul. Sie simuliert SL-Konfiguration, Charakterwerte, Spieleröffnung und Ergebnisanzeige in einem Browser, **nicht** Foundry-Berechtigungen, Netzwerkzustellung oder echtes Mehrspielerverhalten.
 
-GitHub Pages wird unter **Repository Settings > Pages > Deploy from a branch** eingerichtet: Branch `main`, Ordner `/ (root)`. Aufrufe der obigen URL verwenden `/preview/`, nicht die Repository-Startseite. Änderungen an `main` werden automatisch veröffentlicht; `.nojekyll` verhindert eine Jekyll-Verarbeitung.
+GitHub Pages wird unter **Repository Settings > Pages > Deploy from a branch** eingerichtet: Branch `dominikgursch-effective-adventure`, Ordner `/ (root)`. Aufrufe der obigen URL verwenden `/preview/`, nicht die Repository-Startseite. Änderungen am konfigurierten Branch werden automatisch veröffentlicht; `.nojekyll` verhindert eine Jekyll-Verarbeitung.
 
 Unter **[Actions](https://github.com/DominikGursch/foundry-cipher-breach/actions)** läuft für Pushes und Pull Requests **Test and package**: Engine-/Pakettests, Chromium-Browsertests und Erstellen des Foundry-ZIPs. Das Artefakt `foundry-cipher-breach` enthält das Modul-ZIP und die Manifestdatei zum Download. Es ist kein veröffentlichter Foundry-Release.
 
