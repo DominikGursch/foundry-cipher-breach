@@ -37,7 +37,7 @@ try {
         t, onError,
         onSubmit: async data => {
           const result = replayResult(challenge, data);
-          results.append(resultCard(challenge, result, { t }), element("p", { text: t("untrusted") }));
+          results.append(resultCard(challenge, result, { t }), element("small", { text: t("reportUnverified") }));
         }
       });
     }

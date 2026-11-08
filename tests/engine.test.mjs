@@ -25,6 +25,7 @@ test("all supported size/buffer/target combinations have a jointly solvable lega
           const config = { size, buffer, targetCount, sequenceLength, seconds: 15 };
           for (let seed = 0; seed < 4; seed++) {
             const { challenge, solution } = generateChallenge(config, { rng: seeded(seed) });
+            assert.equal(new Set(challenge.targets.map(target => target.join("-"))).size, targetCount);
             assert.equal(new Set(solution.map(cell => `${cell.row}:${cell.col}`)).size, buffer);
             const puzzle = new Puzzle(challenge, { now: () => 0 });
             for (const cell of solution) {

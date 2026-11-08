@@ -34,34 +34,54 @@ test("DV resources include versioned low-Interface pressure while retaining refe
   assert.equal(breachConfig({ dv: 8, rank: 7 }).buffer, 8);
 });
 
-test("reference DVs retain jointly solvable overlapping targets", () => {
+test("reference DV targets are distinct and individually solvable", () => {
   for (const dv of Object.keys(DV_PRESETS).map(Number).filter(dv => dv <= 14)) {
     for (let rank = 0; rank <= 10; rank++) {
       for (let targetCount = 1; targetCount <= DV_PRESETS[dv].lengths.length; targetCount++) {
         for (let seed = 0; seed < 20; seed++) {
           const config = breachConfig({ dv, rank, targetCount, balance: 1 });
           const names = ["Password", "Data", "Node"].slice(0, targetCount);
-          const { challenge, solution } = generateChallenge(config, { rng: seeded(seed), names });
+          const { challenge, solution, solutions } = generateChallenge(config, { rng: seeded(seed), names });
           assert.equal(challenge.schema, 2);
           assert.deepEqual(challenge.names, names);
           assert.equal(solution.length, config.buffer);
-          const codes = solution.map(cell => challenge.matrix[cell.row][cell.col]);
-          let offset = 0;
-          const total = config.sequenceLengths.reduce((sum, length) => sum + length, 0);
-          config.sequenceLengths.forEach((length, index) => {
-            const start = total <= config.buffer ? offset : Math.round(index * (config.buffer - length) / Math.max(1, targetCount - 1));
-            assert.deepEqual(challenge.targets[index], codes.slice(start, start + length));
-            offset += length;
+          assert.equal(new Set(challenge.targets.map(sequence => sequence.join("-"))).size, targetCount);
+          solutions.forEach((path, index) => {
+            const puzzle = new Puzzle(challenge, { now: () => 0 });
+            for (const cell of path) {
+              if (puzzle.status === "won") break;
+              puzzle.select(cell.row, cell.col);
+            }
+            assert.equal(puzzle.matched[index], true);
+            puzzle.jackOut();
+            assert.equal(replayResult(challenge, puzzle.result()).matched[index], true);
           });
-          const puzzle = new Puzzle(challenge, { now: () => 0 });
-          for (const cell of solution) {
-            if (puzzle.status === "won") break;
-            puzzle.select(cell.row, cell.col);
+          if (solutions.every(path => path === solution)) {
+            const puzzle = new Puzzle(challenge, { now: () => 0 });
+            for (const cell of solution) {
+              if (puzzle.status === "won") break;
+              puzzle.select(cell.row, cell.col);
+            }
+            assert.equal(puzzle.status, "won");
           }
-          assert.equal(puzzle.status, "won");
-          assert.ok(replayResult(challenge, puzzle.result()).matched.every(Boolean));
         }
       }
+    }
+  }
+});
+
+test("three full-buffer targets stay distinct even with a constant RNG", () => {
+  for (const dv of [10, 12, 14]) {
+    const config = breachConfig({ dv, rank: 0, targetCount: 3 });
+    const { challenge, solutions } = generateChallenge(config, { rng: () => 0 });
+    assert.equal(new Set(challenge.targets.map(target => target.join("-"))).size, 3);
+    for (const [index, path] of solutions.entries()) {
+      const puzzle = new Puzzle(challenge, { now: () => 0 });
+      for (const cell of path) {
+        if (puzzle.status === "won") break;
+        puzzle.select(cell.row, cell.col);
+      }
+      assert.equal(puzzle.matched[index], true);
     }
   }
 });
@@ -318,6 +338,7 @@ test("all effective DVs 6-80 and all Interface ranks retain a playable individua
           const { challenge, solution, solutions } = generateChallenge(config, { rng: seeded(seed) });
           assert.equal(config.effectiveDV, effectiveDV);
           assert.deepEqual(validateChallenge(challenge), challenge);
+          assert.equal(new Set(challenge.targets.map(sequence => sequence.join("-"))).size, targetCount);
           for (const [index, path] of (solutions ?? [solution]).entries()) {
             const puzzle = new Puzzle(challenge, { now: () => 0 });
             for (const cell of path) {

@@ -437,30 +437,15 @@ export function openConfiguration({
   return root;
 }
 
-export function openReview(result, { t }) {
-  const root = dialog(t("review"), t);
-  root.append(
-    element("p", { className: "cb-note", text: t("untrusted") }),
-    element("p", { text: t("consistent") }),
-    element("p", { text: `${t("outcome")}: ${t(result.outcome)}` }),
-    element("p", { text: `${t("targets")}: ${result.matched.filter(Boolean).length} / ${result.matched.length}` }),
-    element("p", { text: `${t("claimedTime")}: ${(result.elapsedMs / 1000).toFixed(1)}s` }),
-    element("p", { text: `${t("moves")}: ${result.moves.map(cell => `${cell.row + 1}:${cell.col + 1}`).join(" / ") || "-"}` })
-  );
-  return root;
-}
-
 export function resultCard(challenge, result, { t }) {
   return element("div", { className: "cb-report" }, [
-    element("strong", { text: `${t(result.outcome)} / ${result.matched.filter(Boolean).length}/${result.matched.length}` }),
-    element("p", { text: `${challenge.config.mode === "netrun" ? `DV ${challenge.config.dv} / Interface ${challenge.config.rank} / ` : ""}${(result.elapsedMs / 1000).toFixed(1)}s / ${t("buffer")} ${result.moves.length}/${challenge.config.buffer}` }),
-    ...(challenge.config.balance === 3 ? [element("p", {
-      text: `${t("effectiveDV")}: ${challenge.config.effectiveDV} / ${t("repeatedFailures")}: ${challenge.config.repeatedFailures} / ${t("pressureConditions")}: ${challenge.config.pressureConditions} / ${t("enemyRunners")}: ${challenge.config.enemyRunners}`
-    })] : []),
+    element("strong", { text: `${t("reportTitle")} / ${result.matched.filter(Boolean).length}/${result.matched.length}` }),
     element("ul", {}, result.matched.map((matched, index) => element("li", {
       className: matched ? "cb-success" : "cb-failure",
       text: `${matched ? t("matched") : t("missed")}: ${challenge.names?.[index] ?? `${t("objective")} ${index + 1}`}`
     }))),
-    ...(!result.matched.some(Boolean) ? [element("p", { className: "cb-failure", text: t("ice") })] : [])
+    ...(challenge.config.enemyRunners > 0 ? [element("p", {
+      text: t(result.outcome === "timeout" ? "runnerDetected" : "runnerNotDetected")
+    })] : [])
   ]);
 }

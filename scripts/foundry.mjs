@@ -1,6 +1,6 @@
 import { generateChallenge, replayResult, validateChallenge } from "./engine.mjs";
 import { breachConfig, interfaceRank } from "./mechanics.mjs";
-import { element, openBoard, openConfiguration, openReview, resultCard } from "./ui.mjs";
+import { element, openBoard, openConfiguration, resultCard } from "./ui.mjs";
 
 const ID = "foundry-cipher-breach";
 const t = key => game.i18n.localize(`CB.${key}`);
@@ -125,6 +125,34 @@ Hooks.on("getSceneControlButtons", controls => {
   else if (controls?.tokens?.tools) controls.tokens.tools.cipherBreach = { ...tool, onChange: tool.onClick, order: 99 };
 });
 
+Hooks.on("renderSceneControls", (_app, html) => {
+  const root = html?.[0] ?? html;
+  const list = root?.querySelector?.("ol.main-controls");
+  if (!list) {
+    console.warn("Cipher Breach | Scene controls toolbar not found; use the token tool or settings menu.");
+    return;
+  }
+  list.querySelector(".cb-scene-launch")?.remove();
+  if (!game.user.isGM) return;
+  const button = element("li", {
+    className: "scene-control cb-scene-launch",
+    attributes: { role: "button", tabindex: "0", title: t("menuLabel"), "aria-label": t("menuLabel"), "data-tooltip": t("menuLabel") }
+  }, [element("i", { className: "fas fa-terminal", attributes: { "aria-hidden": "true" } })]);
+  const activate = () => { try { open(); } catch (error) { report(error); } };
+  button.addEventListener("click", event => {
+    event.stopPropagation();
+    activate();
+  });
+  button.addEventListener("keydown", event => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      event.stopPropagation();
+      activate();
+    }
+  });
+  list.append(button);
+});
+
 // A core GM-owned document is the invitation; no unauthenticated custom socket commands.
 Hooks.on("createChatMessage", message => {
   if (!message.visible || !message.getFlag(ID, "challenge")) return;
@@ -145,18 +173,19 @@ function renderChat(message, html) {
   try {
     if (challengeFlag) {
       const challenge = challengeFrom(message);
-      container.append(element("p", { text: t("untrusted") }));
       if (challenge.participantId === game.user.id) {
+        container.append(element("p", { text: t("challengeCard") }));
         container.append(chatButton("play", () => play(message.id)));
       }
       if (game.user.isGM) {
         container.append(element("p", {
-          text: `${t("participant")}: ${game.users.get(challenge.participantId)?.name ?? t("missingParticipant")}`
+          text: `${t("invitationGM")}: ${game.users.get(challenge.participantId)?.name ?? t("missingParticipant")}`
         }));
+      } else if (challenge.participantId !== game.user.id) {
+        container.append(element("p", { text: t("invitationPublic") }));
       }
     }
     if (resultFlag) {
-      container.append(element("p", { text: t("untrusted") }));
       const review = () => {
         if (typeof resultFlag.challengeMessageId !== "string" ||
             !/^[A-Za-z0-9_-]{1,64}$/.test(resultFlag.challengeMessageId)) {
@@ -171,13 +200,14 @@ function renderChat(message, html) {
       const participant = game.users.get(checked.challenge.participantId);
       container.append(element("p", { text: `${t("participant")}: ${participant?.character?.name ?? participant?.name ?? t("missingParticipant")}` }));
       container.append(resultCard(checked.challenge, checked.result, { t }));
-      if (game.user.isGM) container.append(chatButton("review", () => openReview(review().result, { t })));
+      container.append(element("small", { text: t("reportUnverified") }));
     }
   } catch (error) {
     console.warn("Cipher Breach | Invalid chat payload", error);
     container.append(element("p", { text: t("invalidPayload") }));
   }
-  (root.querySelector(".message-content") ?? root).append(container);
+  const content = root.matches?.(".message-content") ? root : root.querySelector(".message-content") ?? root;
+  content.replaceChildren(container);
 }
 Hooks.on("renderChatMessage", renderChat);
 Hooks.on("renderChatMessageHTML", renderChat);

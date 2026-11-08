@@ -181,6 +181,70 @@ function lowInterfaceRoutes(config, rng) {
   return { matrix, targets, solutions, decoys, decoyPaths };
 }
 
+function distinctTargets(matrix, solution, lengths, symbols) {
+  const targets = [], protectedCells = new Set(), paths = [];
+  const total = lengths.reduce((sum, length) => sum + length, 0);
+  let offset = 0;
+  const key = cell => `${cell.row}:${cell.col}`;
+  const codes = path => path.map(({ row, col }) => matrix[row][col]);
+  const unique = sequence => !targets.some(target =>
+    target.length === sequence.length && target.every((code, index) => code === sequence[index]));
+  function adjust(path) {
+    const sequence = codes(path);
+    if (unique(sequence)) return true;
+    for (let index = 0; index < path.length; index++) {
+      const { row, col } = path[index];
+      if (protectedCells.has(key(path[index]))) continue;
+      const previous = matrix[row][col];
+      for (const symbol of symbols) {
+        sequence[index] = symbol;
+        if (unique(sequence)) {
+          matrix[row][col] = symbol;
+          return true;
+        }
+      }
+      sequence[index] = previous;
+    }
+    return false;
+  }
+  function alternate(length, path = []) {
+    if (path.length === length) return adjust(path) ? [...path] : null;
+    for (const cell of legalCells(matrix.length, path)) {
+      path.push(cell);
+      const found = alternate(length, path);
+      if (found) return found;
+      path.pop();
+    }
+    return null;
+  }
+  lengths.forEach((length, index) => {
+    const start = total <= solution.length ? offset :
+      Math.round(index * (solution.length - length) / Math.max(1, lengths.length - 1));
+    offset += length;
+    let path = solution.slice(start, start + length);
+    let witnessPath = solution;
+    if (!adjust(path)) {
+      path = null;
+      for (let candidate = 0; candidate <= solution.length - length; candidate++) {
+        const segment = solution.slice(candidate, candidate + length);
+        if (adjust(segment)) {
+          path = segment;
+          break;
+        }
+      }
+      if (!path) {
+        path = alternate(length);
+        if (!path) throw new Error("Could not construct distinct solvable objectives.");
+        witnessPath = path;
+      }
+    }
+    targets.push(codes(path));
+    path.forEach(cell => protectedCells.add(key(cell)));
+    paths.push(witnessPath);
+  });
+  return { targets, solutions: paths };
+}
+
 export function generateChallenge(configInput = DEFAULT_CONFIG, {
   rng = Math.random, id = "local", participantId = null, names
 } = {}) {
@@ -217,21 +281,13 @@ export function generateChallenge(configInput = DEFAULT_CONFIG, {
   } else {
     // Lower DVs retain the reference's jointly solvable, overlapping witness.
     solution = witness(config.size, config.buffer, rng);
-    const codes = solution.map(({ row, col }) => matrix[row][col]);
-    const total = lengths.reduce((sum, length) => sum + length, 0);
-    let offset = 0;
-    targets = lengths.map((length, index) => {
-      const start = total <= config.buffer ? offset :
-        Math.round(index * (config.buffer - length) / Math.max(1, config.targetCount - 1));
-      offset += length;
-      return codes.slice(start, start + length);
-    });
+    ({ targets, solutions } = distinctTargets(matrix, solution, lengths, symbols));
   }
   const challenge = validateChallenge({
     schema: config.mode === "netrun" ? 2 : 1, id, participantId, config, matrix, targets,
     names: names ?? lengths.map((_, index) => `Objective ${index + 1}`)
   });
-  return { challenge, solution, ...(hard ? { solutions, decoys } : {}), ...(decoyPaths ? { decoyPaths } : {}) };
+  return { challenge, solution, solutions, ...(hard ? { decoys } : {}), ...(decoyPaths ? { decoyPaths } : {}) };
 }
 
 export function validateResult(input, challengeInput) {

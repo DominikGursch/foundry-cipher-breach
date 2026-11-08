@@ -32,7 +32,7 @@ https://github.com/DominikGursch/foundry-cipher-breach/releases/latest/download/
 ```
 
 2. **Install** wählen und **Cipher Breach** anschließend in der Welt unter **Manage Modules** aktivieren.
-3. Als SL im **Token-Werkzeugbereich den Terminal-Knopf** drücken. Alternativ unter **Einstellungen > Einstellungen konfigurieren > Moduleinstellungen > Cipher Breach** öffnen.
+3. Als SL den **Terminal-Knopf in der linken Haupt-Werkzeugleiste** drücken. Alternativ den Terminal-Knopf im Token-Werkzeugbereich oder **Einstellungen > Einstellungen konfigurieren > Moduleinstellungen > Cipher Breach** verwenden.
 
 Der stabile Manifest-Link verweist auf den neuesten regulären [Release](https://github.com/DominikGursch/foundry-cipher-breach/releases/latest). Foundry kann darüber auch spätere Updates suchen und installieren. Der alte Vorabrelease `v0.1.0` ist veraltet und sollte nicht installiert werden.
 
@@ -56,7 +56,7 @@ Die SL sendet eine GM-eigene Chat-Einladung. Beim zugewiesenen Online-Spieler ö
 - Ende bei allen erreichten Zielen, vollem Puffer, Zeitablauf, Sackgasse oder Ausstöpseln. Teilerfolge bleiben erhalten; alle Ziele auf dem letzten Pufferplatz zählen als voller Erfolg.
 - Beendete zugewiesene Läufe senden automatisch eine Ergebnisnachricht, ohne Senden-Knopf im Spielfeld. **Ausstöpseln** bleibt immer aktiv und schließt das Fenster, auch nach Zeitablauf oder während der Übertragung. Ein laufender Versuch wird dabei beendet und gemeldet; Escape hat dieselbe Wirkung. Sendefehler werden über die Fehleranzeige der Vorschau bzw. Foundry-Benachrichtigungen gemeldet. Ausstöpseln nach einem bereits angezeigten Sendefehler versucht die Übertragung einmal erneut, ohne das Schließen zu blockieren.
 
-Privater Chat geht an Teilnehmer und alle SLs, öffentlicher an alle. Die Chat-Karte zeigt Rang, DV, Zeitangabe, Pufferverbrauch und jedes Ziel. Ohne erreichtes Ziel erscheint der ICE-Hinweis; **die SL bestimmt sämtliche Folgen manuell**. Lokales Üben versendet keine Chat-Nachrichten.
+Privater Chat geht an Teilnehmer und alle SLs, öffentlicher an alle. Der kurze Spielerbericht nennt erreichte und verfehlte Ziele sowie, falls ein gegnerischer Runner gewählt wurde, den Stand seiner Erkennung. Die Einladung für den Runner ist bewusst im Streetslang formuliert; als sprachliche Orientierung dient [Selected Streetslang](https://roll20.net/compendium/cpunk/Selected%20Streetslang). **Die SL bestimmt sämtliche Folgen manuell.** Lokales Üben versendet keine Chat-Nachrichten.
 
 ## Deep-Dive-Oberfläche
 
@@ -138,13 +138,13 @@ Alle 88 Basis-DV-/Rang-Kombinationen ohne Erschwernisse, **Zeit in Sekunden**:
 
 Die zusätzliche Überlastung und Runner-Zeitverkürzung sind eigene Balanceentscheidungen, keine offiziellen Regeln. Die Zahl der Ziele ändert die Zeit nicht. Bei extrem vielen Erschwernissen erreicht das Zeitbudget die 3-Sekunden-Untergrenze; weitere Zuschläge verkürzen es dann nicht mehr. Die Matrix wird nicht unbegrenzt größer.
 
-Bei gegnerischen Runnern füllt sich ein vierteiliger **Gegenhack-Trace** über das verbleibende Zeitbudget. Er zeigt die feindliche Aktivität, simuliert aber keine echten alternierenden Matrixzüge eines zweiten Spielers. Erreicht die Ablaufzeit ihr Ende, gilt der normale Timeout mit Störbild. Ein vorheriger Erfolg stoppt auch den Trace. Es gibt keine zufällige Änderung der Matrix während eines Zugs und keinen zusätzlichen versteckten Verlustwurf.
+Bei gegnerischen Runnern füllt sich ein vierteiliger **Gegenhack-Trace** über das verbleibende Zeitbudget. Er zeigt die feindliche Aktivität, simuliert aber keine echten alternierenden Matrixzüge eines zweiten Spielers. Erreicht die Ablaufzeit ihr Ende, ist der Trace vollständig und der Bericht meldet den Hack als erkannt. Endet der Versuch vorher – auch durch vollen Puffer oder Ausstöpseln –, stoppt der Trace und der Bericht meldet ihn als nicht erkannt. Das ist eine Spielregel anhand der gemeldeten Zeit, keine unabhängig bestätigte Erkennung. Es gibt keine zufällige Änderung der Matrix während eines Zugs und keinen zusätzlichen versteckten Verlustwurf.
 
 **Interface-Rang:** ganze Zahl von 0 bis 10.
 
 Bei weniger Zielen werden die ersten Sequenzlängen des DV-Presets verwendet. Jede Länge wird auf die Puffergröße begrenzt.
 
-**DV 6–14:** Die Engine erzeugt einen legalen, nicht wiederholten Pfad und nimmt alle Zielsequenzen daraus. Wenn die Summe der Längen nicht in den Puffer passt, werden die Starts wie im Referenzcode über den Pfad verteilt: `Math.round(index * (buffer - length) / Math.max(1, count - 1))`. Dadurch überlappen Ziele und sind gemeinsam lösbar. Ein selbst gewählter Weg kann trotzdem erfolglos sein.
+**DV 6–14:** Die Engine erzeugt zunächst einen legalen, nicht wiederholten Pfad und verteilt die Ziele wie in der Referenz darauf. Neue Zielsequenzen sind immer unterschiedlich. Wo möglich bleiben sie überlappend gemeinsam lösbar; wenn der Puffer dafür zu kurz ist, erhalten einzelne Ziele eigene legale Lösungswege. So können etwa drei verschiedene Ziele, die jeweils den ganzen Puffer füllen, nicht alle in einem Versuch erreicht werden. Bereits gespeicherte Einladungen mit gleichen Zielsequenzen bleiben unverändert spielbar.
 
 **Ab effektivem DV16:** Zwölf statt sechs Codes und getrennte, unterschiedliche Zielrouten. Jedes Ziel besitzt einen eigenen legalen Weg innerhalb des Puffers; **alle Ziele gemeinsam sind nicht garantiert erreichbar**. Die Entscheidung, welche Belohnung verfolgt wird, gehört zur Schwierigkeit. Irreführende Einstiege sind Sequenz-Sackgassen, keine gesperrten Zellen; andere legale Züge bleiben erlaubt, verbrauchen aber den knappen Puffer. Ungerade effektive DVs verwenden das nächste passende Matrix-/Längen-Preset, während ihre Zeit exakt berechnet wird.
 
@@ -180,7 +180,7 @@ Optional `rank: 6` zum Überschreiben sowie `repeatedFailures: 1`, `pressureCond
 
 ## Vertrauensgrenze
 
-**Ergebnisse sind ungeprüfte Spielerangaben, keine authentifizierten Erfolge.** Die SL kann den Zugverlauf gegen das aktuell verfügbare GM-eigene Chat-Dokument nachspielen. Geprüft werden begrenzte Datenschemata, Teilnehmer/angegebener Autor, legale Züge, Zieltreffer, Endzustand und behauptete Zeitgrenzen. Das beweist weder echte Laufzeit noch ehrliches Spielen oder kryptografische Identität.
+**Ergebnisse sind ungeprüfte Spielerangaben, keine authentifizierten Erfolge.** Vor der Anzeige wird der Zugverlauf automatisch gegen das aktuell verfügbare GM-eigene Chat-Dokument nachgespielt. Geprüft werden begrenzte Datenschemata, Teilnehmer/angegebener Autor, legale Züge, Zieltreffer, Endzustand und behauptete Zeitgrenzen. Das beweist weder echte Laufzeit noch ehrliches Spielen oder kryptografische Identität.
 
 Es gibt keine eigenen Socket-Befehle, versteckten Welt-Settings, Remote-Code oder privilegierten Aktionen aus Spielerangaben. Core-Chat-Dokumente übernehmen Zustellung und Sichtbarkeit. Spieler können die Matrix untersuchen, neu versuchen oder ihre Clients verändern. Ausstöpseln/Escape beendet den Lauf mit Bericht; Neuladen verliert ihn ohne Bericht. Es gibt keine Fortsetzung; Wiederholungen werden nicht dauerhaft verhindert. Es gibt keine autoritative Startuhr oder Server-Zeitstempel pro Zug. Wer die Einladung sehen kann, kann Matrix und Ziele lesen. Bearbeiten/Löschen einer Quelle kann Berichte ungültig machen; fehlende oder fremdverfasste Quellen werden abgelehnt.
 
@@ -199,13 +199,13 @@ npm run preview
 
 Lokale Vorschau: `http://127.0.0.1:8080/preview/`. Optional `PORT=8090 npm run preview`. Alternativ den Repository-Root mit einem statischen HTTP-Server bereitstellen; `file://` unterstützt die Modul-/Sprachdateien nicht.
 
-Tests decken alle unterstützten DV-/Rang-/Zielkombinationen, Referenzformeln, gemeinsame Lösbarkeit bei niedrigen DVs, einzelne Lösbarkeit und falsche Einstiege bei hohen DVs, Alt-Schemata, Timer, Überlappung, Teilerfolge und Paketformat ab. Der DV20-/Rang-0-Test prüft 100 reproduzierbare Rätsel auf unterschiedliche Ziele und höchstens einen Zieltreffer pro Vierer-Puffer. Chromium prüft Konfiguration, Charakterauslesung, Countdown, Hervorhebungen, automatisches Melden, Fehlerwiederholung, DE-/EN-Parität und mobile Darstellung. Foundry-Hooks/Berechtigungsgrenzen werden mit einem Adapter-Testdouble geprüft, **nicht mit einem laufenden Foundry-Server**.
+Tests decken alle unterstützten DV-/Rang-/Zielkombinationen, Referenzformeln, eindeutige und einzeln lösbare Ziele, gemeinsame Lösbarkeit bei ausreichendem Puffer, falsche Einstiege bei hohen DVs, Alt-Schemata, Timer, Überlappung, Teilerfolge und Paketformat ab. Der DV20-/Rang-0-Test prüft 100 reproduzierbare Rätsel auf unterschiedliche Ziele und höchstens einen Zieltreffer pro Vierer-Puffer. Chromium prüft Konfiguration, Charakterauslesung, Countdown, Hervorhebungen, automatisches Melden, Fehlerwiederholung, DE-/EN-Parität und mobile Darstellung. Foundry-Hooks/Berechtigungsgrenzen werden mit einem Adapter-Testdouble geprüft, **nicht mit einem laufenden Foundry-Server**.
 
-`npm run package` erzeugt `dist/foundry-cipher-breach-v<VERSION>.zip` und `dist/module.json`. Das ZIP enthält ausschließlich Laufzeit, Manifest und Lizenz-/Dokumentationsdateien; `dist` ist unversioniert. Für einen neuen regulären Release `version` in `module.json`, `package.json` und `package-lock.json` sowie die versionsgebundene `download`-URL in `module.json` aktualisieren und die Änderungen testen und committen. Danach auf dem gewünschten Commit einen passenden neuen Tag erstellen und pushen, beispielsweise für Version 0.2.1:
+`npm run package` erzeugt `dist/foundry-cipher-breach-v<VERSION>.zip` und `dist/module.json`. Das ZIP enthält ausschließlich Laufzeit, Manifest und Lizenz-/Dokumentationsdateien; `dist` ist unversioniert. Für einen neuen regulären Release `version` in `module.json`, `package.json` und `package-lock.json` sowie die versionsgebundene `download`-URL in `module.json` aktualisieren und die Änderungen testen und committen. Danach auf dem gewünschten Commit einen passenden neuen Tag erstellen und pushen, beispielsweise für Version 0.2.2:
 
 ```sh
-git tag v0.2.1
-git push origin v0.2.1
+git tag v0.2.2
+git push origin v0.2.2
 ```
 
 Der Workflow **Release Foundry module** prüft die Tag-/Versionsübereinstimmung, führt Node- und Browsertests aus und veröffentlicht erst danach Manifest und ZIP als GitHub-Release. Vor Veröffentlichung die Revision prüfen und möglichst einen echten Foundry-v12-Test durchführen. Der Workflow erstellt keine Commits und verändert keine Branches. Bei einem fehlgeschlagenen Lauf vor einem erneuten Start prüfen, ob bereits ein unvollständiger Release angelegt wurde.

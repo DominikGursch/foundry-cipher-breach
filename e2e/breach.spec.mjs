@@ -28,6 +28,19 @@ test("GM configuration derives DV and character values, including zero and missi
   await expect(page.locator(".cb-targets li")).toHaveCount(2);
 });
 
+test("three short-buffer objectives never display identical sequences", async ({ page }) => {
+  await page.goto("/preview/?lang=en");
+  await page.locator("#open").click();
+  await page.locator('[name="dv"]').selectOption("12");
+  await page.locator('[name="participant"]').selectOption("demo0");
+  await page.locator('[name="targetCount"]').selectOption("3");
+  await page.locator('[type="submit"]').click();
+  const sequences = await page.locator(".cb-targets li").evaluateAll(items =>
+    items.map(item => [...item.querySelectorAll("code")].map(code => code.textContent).join("-")));
+  expect(sequences).toHaveLength(3);
+  expect(new Set(sequences).size).toBe(3);
+});
+
 test("countdown starts on opening, includes time before the first code and reports once", async ({ page }) => {
   await page.clock.install();
   await page.goto("/preview/");
@@ -193,6 +206,37 @@ test("Foundry v12 settings menu and token control open the configuration", async
   await expect(page.locator('[name="rank"]')).toHaveValue("7");
 });
 
+test("GM can open the breach directly from the primary scene toolbar", async ({ page }) => {
+  await mockFoundry(page);
+  await page.evaluate(() => {
+    const root = document.createElement("nav");
+    root.id = "test-scene-controls";
+    root.innerHTML = '<ol class="main-controls"><li class="scene-control">Tokens</li></ol>';
+    window.sceneControlClicks = 0;
+    root.addEventListener("click", () => window.sceneControlClicks++);
+    document.body.append(root);
+    Hooks.call("renderSceneControls", {}, [root]);
+    Hooks.call("renderSceneControls", {}, [root]);
+  });
+  const button = page.locator(".main-controls .cb-scene-launch");
+  await expect(button).toHaveCount(1);
+  await expect(button).toHaveAttribute("aria-label", "Open Cipher Breach");
+  await button.click();
+  await expect(page.locator(".cb-config")).toBeVisible();
+  expect(await page.evaluate(() => window.sceneControlClicks)).toBe(0);
+  await page.locator(".cb-config").locator("..").locator(".cb-close").click();
+  await expect(page.locator(".cb-config")).toHaveCount(0);
+  await button.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".cb-config")).toBeVisible();
+  await page.locator(".cb-config").locator("..").locator(".cb-close").click();
+  await page.evaluate(() => {
+    game.user = game.users.get("runner");
+    Hooks.call("renderSceneControls", {}, [document.querySelector("#test-scene-controls")]);
+  });
+  await expect(button).toHaveCount(0);
+});
+
 test("Foundry adapter restricts launch and interaction and uses core chat for automatic reports", async ({ page }) => {
   await mockFoundry(page);
   const shared = await page.evaluate(async () => {
@@ -247,6 +291,9 @@ test("Foundry adapter restricts launch and interaction and uses core chat for au
   expect(report.whisper).toEqual(["runner", "gm", "gm2"]);
   expect(report.text).toContain("Not reached: Password");
   expect(report.text).toContain("0/3");
+  expect(report.text).toContain("Player report");
+  expect(report.text).not.toContain("Interface");
+  expect(report.text).not.toContain("Enemy runner");
   const forged = await page.evaluate(() => {
     const message = [...game.messages.values()].at(-1);
     const root = document.createElement("div");
@@ -257,6 +304,60 @@ test("Foundry adapter restricts launch and interaction and uses core chat for au
   expect(forged).toContain("Invalid or unavailable Cipher Breach data");
   expect(forged).not.toContain("Not reached: Password");
 });
+
+test("invitations render as short GM and runner messages, including older chat content", async ({ page }) => {
+  await mockFoundry(page);
+  const messages = await page.evaluate(async () => {
+    const message = await game.modules.get("foundry-cipher-breach").api.start({ user: "runner" });
+    const render = () => {
+      const root = document.createElement("div");
+      root.className = "message-content";
+      root.textContent = "Old verbose invitation text";
+      Hooks.call("renderChatMessage", message, [root]);
+      return root.textContent;
+    };
+    const gm = render();
+    game.user = game.users.get("runner");
+    const runner = render();
+    return { gm, runner };
+  });
+  expect(messages.gm).toContain("Breach invitation for: Runner");
+  expect(messages.runner).toContain("Hey, choom");
+  expect(messages.runner).toContain("Jack in");
+  expect(messages.gm).not.toContain("Old verbose");
+  expect(messages.runner).not.toContain("Old verbose");
+});
+
+for (const lang of ["de", "en"]) {
+  test(`compact results show only objectives and actual trace outcome in ${lang}`, async ({ page }) => {
+    await page.goto(`/preview/?lang=${lang}`);
+    const reports = await page.evaluate(async language => {
+      const { resultCard } = await import("/scripts/ui.mjs");
+      const { generateChallenge } = await import("/scripts/engine.mjs");
+      const { breachConfig } = await import("/scripts/mechanics.mjs");
+      const strings = (await (await fetch(`/lang/${language}.json`)).json()).CB;
+      const t = key => strings[key];
+      const challenge = generateChallenge(breachConfig({ enemyRunners: 1 }), { names: ["A", "B", "C"] }).challenge;
+      const result = { outcome: "jacked-out", matched: [true, false, false] };
+      return {
+        escaped: resultCard(challenge, result, { t }).textContent,
+        detected: resultCard(challenge, { ...result, outcome: "timeout" }, { t }).textContent,
+        noRunner: resultCard({ ...challenge, config: { ...challenge.config, enemyRunners: 0 } }, {
+          ...result, outcome: "timeout", matched: [false, false, false]
+        }, { t }).textContent
+      };
+    }, lang);
+    expect(reports.escaped).toContain(lang === "de" ? "Hack nicht erkannt" : "hack not detected");
+    expect(reports.detected).toContain(lang === "de" ? "Hack erkannt" : "hack detected");
+    expect(reports.noRunner).not.toContain(lang === "de" ? "Gegnerischer Runner" : "Enemy runner");
+    expect(reports.noRunner).not.toContain("ICE");
+    expect(reports.escaped).not.toContain("DV");
+    expect(reports.escaped).not.toContain("Interface");
+    expect(reports.escaped).toContain("A");
+    expect(reports.escaped).toContain("B");
+    expect(reports.escaped).toContain("C");
+  });
+}
 
 test("Foundry report fails closed if the source is removed, and forged invitations do not open", async ({ page }) => {
   await mockFoundry(page);
@@ -303,8 +404,8 @@ test("DV 16-20 are available and no-move timeout is automatically reported", asy
   await page.locator('[type="submit"]').click();
   await expect(page.locator(".cb-cell")).toHaveCount(64);
   await page.clock.runFor(4200);
-  await expect(page.locator("#results .cb-report")).toContainText("Zeitlimit erreicht");
-  await expect(page.locator("#results .cb-report")).toContainText("Puffer 0/4");
+  await expect(page.locator("#results .cb-report")).toContainText("Nicht erreicht");
+  await expect(page.locator("#results .cb-report")).not.toContainText("Puffer");
   await expect(page.locator("#results .cb-report")).toHaveCount(1);
   await expect(page.locator(".cb-jack")).toBeEnabled();
 });
@@ -548,7 +649,8 @@ for (const lang of ["de", "en"]) {
     await expect(page.locator(".cb-traced")).toHaveCount(4);
     await expect(page.locator(".cb-signal-lost")).toBeVisible();
     await expect(page.locator("#results .cb-report")).toHaveCount(1);
-    await expect(page.locator("#results .cb-report")).toContainText("21");
+    await expect(page.locator("#results .cb-report")).toContainText(lang === "de" ? "Hack erkannt" : "hack detected");
+    await expect(page.locator("#results .cb-report")).not.toContainText("DV");
     await page.locator(".cb-jack").click();
     await page.locator("#open").click();
     await expect(page.locator('[name="repeatedFailures"]')).toHaveValue("0");
@@ -750,8 +852,8 @@ for (const action of ["jack", "escape"]) {
     else await page.keyboard.press("Escape");
     await expect(page.locator(".cb-board")).toHaveCount(0);
     await expect(page.locator("#results .cb-report")).toHaveCount(1);
-    await expect(page.locator("#results .cb-report")).toContainText("Verbindung vom Runner beendet");
-    await expect(page.locator("#results .cb-report")).toContainText("Puffer 1/6");
+    await expect(page.locator("#results .cb-report")).toContainText("Nicht erreicht");
+    await expect(page.locator("#results .cb-report")).not.toContainText("Puffer");
     await page.clock.runFor(40000);
     await expect(page.locator("#results .cb-report")).toHaveCount(1);
   });
