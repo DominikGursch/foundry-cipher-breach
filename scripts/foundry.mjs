@@ -15,7 +15,7 @@ function note(key) {
 }
 
 function challengeFrom(message) {
-  if (!message?.user?.isGM) throw new Error("Challenge must be a GM-authored chat document.");
+  if (!message?.author?.isGM) throw new Error("Challenge must be a GM-authored chat document.");
   return validateChallenge(message.getFlag(ID, "challenge"));
 }
 
@@ -28,7 +28,7 @@ async function launch(config, participantId, publicResult, names) {
     participantId, ...game.users.filter(user => user.isGM).map(user => user.id)
   ])];
   return ChatMessage.create({
-    user: game.user.id,
+    author: game.user.id,
     content: note("challengeCard"),
     whisper,
     flags: { [ID]: { challenge } }
@@ -74,7 +74,7 @@ function play(messageId) {
       if (canonical.participantId !== game.user.id) throw new Error("Participant mismatch.");
       replayResult(canonical, data);
       await ChatMessage.create({
-        user: game.user.id,
+        author: game.user.id,
         content: note("resultCard"),
         whisper: [...source.whisper.map(user => typeof user === "string" ? user : user.id)],
         flags: { [ID]: { result: { challengeMessageId: source.id, data } } }
@@ -164,7 +164,7 @@ function renderChat(message, html) {
         }
         const source = game.messages.get(resultFlag.challengeMessageId);
         const challenge = challengeFrom(source);
-        if (message.user?.id !== challenge.participantId) throw new Error("Result author does not match participant.");
+        if (message.author?.id !== challenge.participantId) throw new Error("Result author does not match participant.");
         return { challenge, result: replayResult(challenge, resultFlag.data) };
       };
       const checked = review();

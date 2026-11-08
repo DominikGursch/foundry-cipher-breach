@@ -146,15 +146,18 @@ async function mockFoundry(page) {
     window.game = {
       user: users[0], users, messages: new Map(),
       modules: new Map([["foundry-cipher-breach", module]]),
+      settings: { registerMenu: (namespace, key, options) => { window.registeredMenu = { namespace, key, options }; } },
       i18n: { localize: key => strings[key.slice(3)] }
     };
+    window.FormApplication = class FormApplication {};
     window.notices = [];
     window.ui = { notifications: { error: text => window.notices.push(text) } };
     window.foundry = { utils: { randomID: () => `id${game.messages.size}` } };
     window.ChatMessage = {
       create: async data => {
+        if (typeof data.author !== "string" || "user" in data) throw new Error("Expected Foundry v12 author field");
         const message = {
-          ...data, id: `msg${game.messages.size}`, user: users.get(data.user), visible: true,
+          ...data, id: `msg${game.messages.size}`, author: users.get(data.author), visible: true,
           getFlag: (scope, flag) => data.flags?.[scope]?.[flag]
         };
         game.messages.set(message.id, message);
@@ -163,9 +166,32 @@ async function mockFoundry(page) {
       }
     };
     await import("/scripts/foundry.mjs");
+    Hooks.call("init");
     Hooks.call("ready");
   });
 }
+
+test("Foundry v12 settings menu and token control open the configuration", async ({ page }) => {
+  await mockFoundry(page);
+  const menu = await page.evaluate(() => ({
+    namespace: window.registeredMenu.namespace,
+    key: window.registeredMenu.key,
+    isForm: window.registeredMenu.options.type.prototype instanceof FormApplication,
+    restricted: window.registeredMenu.options.restricted
+  }));
+  expect(menu).toEqual({ namespace: "foundry-cipher-breach", key: "launcher", isForm: true, restricted: false });
+  await page.evaluate(() => new window.registeredMenu.options.type().render(true));
+  await expect(page.locator(".cb-config")).toBeVisible();
+  await page.locator(".cb-config").locator("..").locator(".cb-close").click();
+  await expect(page.locator(".cb-config")).toHaveCount(0);
+  await page.evaluate(() => {
+    const controls = [{ name: "token", tools: [] }];
+    Hooks.call("getSceneControlButtons", controls);
+    controls[0].tools[0].onClick();
+  });
+  await expect(page.locator(".cb-config")).toBeVisible();
+  await expect(page.locator('[name="rank"]')).toHaveValue("7");
+});
 
 test("Foundry adapter restricts launch and interaction and uses core chat for automatic reports", async ({ page }) => {
   await mockFoundry(page);
@@ -215,12 +241,21 @@ test("Foundry adapter restricts launch and interaction and uses core chat for au
     const root = document.createElement("div");
     root.className = "message-content";
     Hooks.call("renderChatMessage", message, root);
-    return { author: message.user.id, whisper: message.whisper, text: root.textContent };
+    return { author: message.author.id, whisper: message.whisper, text: root.textContent };
   });
   expect(report.author).toBe("runner");
   expect(report.whisper).toEqual(["runner", "gm", "gm2"]);
   expect(report.text).toContain("Not reached: Password");
   expect(report.text).toContain("0/3");
+  const forged = await page.evaluate(() => {
+    const message = [...game.messages.values()].at(-1);
+    const root = document.createElement("div");
+    root.className = "message-content";
+    Hooks.call("renderChatMessage", { ...message, author: game.users.get("other") }, root);
+    return root.textContent;
+  });
+  expect(forged).toContain("Invalid or unavailable Cipher Breach data");
+  expect(forged).not.toContain("Not reached: Password");
 });
 
 test("Foundry report fails closed if the source is removed, and forged invitations do not open", async ({ page }) => {
@@ -228,7 +263,7 @@ test("Foundry report fails closed if the source is removed, and forged invitatio
   await page.evaluate(async () => {
     const message = await game.modules.get("foundry-cipher-breach").api.start({ user: "runner" });
     game.user = game.users.get("runner");
-    Hooks.call("createChatMessage", { ...message, user: game.users.get("other") });
+    Hooks.call("createChatMessage", { ...message, author: game.users.get("other") });
     if (document.querySelector(".cb-board")) throw new Error("Forged invitation opened.");
     Hooks.call("createChatMessage", message);
     game.messages.delete(message.id);

@@ -31,13 +31,17 @@ Das Modul hat keine Laufzeitabhängigkeiten. Für einen Test aus einem Checkout 
 
 Ein Checkout benötigt nur `module.json`, `scripts`, `styles`, `lang`, `LICENSE`, `NOTICE.md` und `README.md` im Modulverzeichnis. `node_modules`, Vorschau und Tests gehören nicht in Foundry.
 
-Das Manifest verweist weiterhin auf den geplanten `v0.1.0`-Release:
+Das Manifest verweist auf den vorhandenen `v0.1.0`-Release:
 
 ```text
 https://github.com/DominikGursch/foundry-cipher-breach/releases/download/v0.1.0/module.json
 ```
 
-**Dieser Installationslink funktioniert erst, wenn die Release-Assets veröffentlicht sind.** Die GitHub-Demo und Actions-Artefakte benötigen keinen Release. Die Mindestversion ist v12; es wird keine echte Foundry-Runtime-Zertifizierung behauptet. Der Adapter unterstützt sowohl die v12-Werkzeugliste als auch die neuere Werkzeugstruktur und Chat-DOM-Hooks, ohne eine neuere Foundry-Version als verifiziert auszuweisen.
+**Achtung: Der veröffentlichte Release `v0.1.0` enthält einen älteren Entwicklungsstand als diese Version und die GitHub-Demo.** Für einen Live-Test des aktuellen Branches stattdessen den erfolgreichen [Actions-Lauf für diesen Branch](https://github.com/DominikGursch/foundry-cipher-breach/actions/workflows/test.yml?query=branch%3Adominikgursch-effective-adventure) öffnen und das Artefakt **foundry-cipher-breach** herunterladen. Das innere Modul-ZIP wie oben beschrieben installieren; der Download kann eine GitHub-Anmeldung erfordern. Alternativ `npm ci && npm run package` im aktuellen Checkout ausführen und das ZIP aus `dist/` installieren. Die Release-Assets und der Manifest-Link werden dadurch nicht aktualisiert.
+
+**Kompatibilitätsprüfung für Foundry 12.343 / CPRed 0.92.4:** [CPRed 0.92.4](https://foundryvtt.com/packages/cyberpunk-red-core) gibt Foundry 12 als unterstützte Version an. Das Netrunner-Rollen-Item dieses Releases verwendet `type: "role"`, `system.mainRoleAbility: "Interface"` und `system.rank`; diese Felder liest das Modul. Auch die v12-Schnittstellen für Einstellungen, Szenenwerkzeuge, Chat und Collections wurden anhand der öffentlichen Dokumentation geprüft. Insbesondere verwendet der Chat-Adapter das seit v12 gültige [`ChatMessage.author`](https://github.com/foundryvtt/foundryvtt/issues/9843) statt des alten `user`-Felds. Ein lokaler Test simuliert die Adapter-Schnittstellen, ersetzt aber **keinen echten Foundry-Server oder Mehrspieler-Livetest**. Die Mindestversion des Moduls ist v12; eine neuere Foundry-Version ist nicht als geprüft ausgewiesen.
+
+Für den ersten echten Test eine Sicherung der Welt anlegen, das Modul aktivieren und mit zwei verbundenen Konten prüfen: SL öffnet den Terminal-Knopf, wählt den zugewiesenen Netrunner und kontrolliert den vorgeschlagenen Interface-Rang; der Spieler öffnet bzw. erhält die Einladung und stöpselt aus; anschließend muss die Ergebnisnachricht für Spieler und SL sichtbar sein. Wird nichts gemeldet, Chat-Erstellungsrechte und Browserkonsole prüfen. Es werden keine Charakterwerte oder Weltobjekte verändert.
 
 ## SL-/Spieler-Ablauf
 

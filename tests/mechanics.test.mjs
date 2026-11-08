@@ -217,6 +217,22 @@ test("Interface extraction matches RED role data, preserves zero, distinguishes 
   for (const rank of [-1, 11, 2.5, "oops", true, {}]) assert.throws(() => interfaceRank(actor("Netrunner", rank)));
 });
 
+test("CPRed 0.92.4 role data works with a Foundry v12-style embedded collection", () => {
+  // The v0.92.4 Netrunner role defines type=role, mainRoleAbility=Interface and rank=4.
+  const netrunner = { type: "role", name: "Netrunner", system: { mainRoleAbility: "Interface", rank: 4 } };
+  class EmbeddedCollection extends Map {
+    [Symbol.iterator]() { return this.values(); }
+  }
+  const items = new EmbeddedCollection([
+    ["solo", { type: "role", name: "Solo", system: { mainRoleAbility: "Combat Awareness", rank: 7 } }],
+    ["runner", netrunner]
+  ]);
+  assert.equal(interfaceRank({ items }), 4);
+  netrunner.name = "Localized role";
+  netrunner.system.rank = 0;
+  assert.equal(interfaceRank({ items }), 0);
+});
+
 test("DV/rank/schema tampering and malformed objective names fail explicitly", () => {
   for (const dv of [0, 7, 19, 21, 22, "8", NaN]) assert.throws(() => breachConfig({ dv }));
   for (const rank of [-1, 11, 1.5, "4", null]) assert.throws(() => breachConfig({ rank }));
