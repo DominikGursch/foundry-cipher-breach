@@ -403,7 +403,7 @@ export function openConfiguration({
   }
   function selectParticipant() {
     const user = users.find(user => user.id === participant.value);
-    rank.value = String(user?.rank ?? 4);
+    rank.value = String(user ? user.rank ?? 0 : 4);
     rankNote.textContent = !user ? t("practiceRank") : user.rank === null || user.rank === undefined ? t("missingRank") : t("characterRank");
     update();
   }

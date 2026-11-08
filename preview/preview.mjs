@@ -28,18 +28,28 @@ try {
     t, onError, isGM: true, users,
     onLaunch: async (config, participantId, publicResult, names) => {
       const { challenge } = generateChallenge(config, { id: `demo-${Date.now()}`, participantId, names });
+      let board = null;
+      const jackIn = element("button", { text: t("play"), attributes: { type: "button" } });
+      jackIn.addEventListener("click", () => {
+        if (board) return;
+        try {
+          board = openBoard(challenge, {
+            t, onError,
+            onSubmit: async data => {
+              const result = replayResult(challenge, data);
+              results.append(resultCard(challenge, result, { t }));
+            }
+          });
+          board.addEventListener("close", () => { board = null; }, { once: true });
+        } catch (error) { onError(error); }
+      });
       results.replaceChildren(
         element("h2", { text: t("previewResult") }),
         element("p", { text: `${users.find(user => user.id === participantId).name} / ${t(publicResult ? "public" : "private")}` }),
-        element("p", { text: t("previewLaunched") })
+        element("p", { text: t("previewLaunched") }),
+        element("p", { text: t("challengeCard") }),
+        jackIn
       );
-      openBoard(challenge, {
-        t, onError,
-        onSubmit: async data => {
-          const result = replayResult(challenge, data);
-          results.append(resultCard(challenge, result, { t }), element("small", { text: t("reportUnverified") }));
-        }
-      });
     }
   }));
 } catch (error) {

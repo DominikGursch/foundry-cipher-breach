@@ -53,8 +53,7 @@ async function start({
   if (!game.user.isGM) throw new Error("Only a GM can launch a breach.");
   const participant = game.users.get(user);
   if (!participant) throw new Error("Select an existing participant.");
-  const actorRank = rank ?? interfaceRank(participant.character);
-  if (actorRank === null) throw new Error("No Interface role found; specify rank explicitly.");
+  const actorRank = rank ?? interfaceRank(participant.character) ?? 0;
   const config = breachConfig({ dv, rank: actorRank, targetCount, repeatedFailures, pressureConditions, enemyRunners });
   return launch(config, participant.id, publicResult,
     names ?? ["backdoor", "data", "control"].slice(0, config.targetCount).map(t));
@@ -153,15 +152,6 @@ Hooks.on("renderSceneControls", (_app, html) => {
   list.append(button);
 });
 
-// A core GM-owned document is the invitation; no unauthenticated custom socket commands.
-Hooks.on("createChatMessage", message => {
-  if (!message.visible || !message.getFlag(ID, "challenge")) return;
-  try {
-    const challenge = challengeFrom(message);
-    if (challenge.participantId === game.user.id) play(message.id);
-  } catch (error) { report(error); }
-});
-
 function renderChat(message, html) {
   const root = html?.[0] ?? html;
   if (!root?.querySelector || !message.visible) return;
@@ -200,7 +190,6 @@ function renderChat(message, html) {
       const participant = game.users.get(checked.challenge.participantId);
       container.append(element("p", { text: `${t("participant")}: ${participant?.character?.name ?? participant?.name ?? t("missingParticipant")}` }));
       container.append(resultCard(checked.challenge, checked.result, { t }));
-      container.append(element("small", { text: t("reportUnverified") }));
     }
   } catch (error) {
     console.warn("Cipher Breach | Invalid chat payload", error);

@@ -1,5 +1,10 @@
 import { test, expect } from "@playwright/test";
 
+async function startPreview(page) {
+  await page.locator('[type="submit"]').click();
+  await page.locator("#results button").click();
+}
+
 test("GM configuration derives DV and character values, including zero and missing roles", async ({ page }) => {
   await page.goto("/preview/");
   await page.locator("#open").click();
@@ -15,13 +20,15 @@ test("GM configuration derives DV and character values, including zero and missi
   await expect(page.locator(".cb-config .cb-metadata")).toContainText("Puffer: 4 / 10.2s");
   await expect(page.locator(".cb-config .cb-metadata")).toContainText("4, 4, 4");
   await page.locator('[name="participant"]').selectOption("no-role");
-  await expect(page.locator('[name="rank"]')).toHaveValue("4");
+  await expect(page.locator('[name="rank"]')).toHaveValue("0");
   await expect(page.locator(".cb-config")).toContainText("Keine Netrunner-Rolle gefunden");
+  await page.locator('[name="rank"]').fill("3");
+  await expect(page.locator('[name="rank"]')).toHaveValue("3");
   await page.locator('[name="dv"]').selectOption("6");
   await expect(page.locator('[name="targetCount"] option')).toHaveCount(2);
   await expect(page.locator('[name="objective3"]')).toBeHidden();
   await page.locator('[name="objective1"]').fill("<img src=x onerror=alert(1)>");
-  await page.locator('[type="submit"]').click();
+  await startPreview(page);
   await expect(page.locator(".cb-board")).toBeVisible();
   await expect(page.locator(".cb-targets strong").first()).toHaveText("<img src=x onerror=alert(1)>");
   await expect(page.locator(".cb-board img")).toHaveCount(0);
@@ -34,7 +41,7 @@ test("three short-buffer objectives never display identical sequences", async ({
   await page.locator('[name="dv"]').selectOption("12");
   await page.locator('[name="participant"]').selectOption("demo0");
   await page.locator('[name="targetCount"]').selectOption("3");
-  await page.locator('[type="submit"]').click();
+  await startPreview(page);
   const sequences = await page.locator(".cb-targets li").evaluateAll(items =>
     items.map(item => [...item.querySelectorAll("code")].map(code => code.textContent).join("-")));
   expect(sequences).toHaveLength(3);
@@ -46,6 +53,10 @@ test("countdown starts on opening, includes time before the first code and repor
   await page.goto("/preview/");
   await page.locator("#open").click();
   await page.locator('[type="submit"]').click();
+  await page.clock.runFor(60000);
+  await expect(page.locator(".cb-board")).toHaveCount(0);
+  await expect(page.locator("#results .cb-report")).toHaveCount(0);
+  await page.locator("#results button").click();
   await expect(page.locator(".cb-time")).toHaveText("39.0s");
   await page.clock.runFor(5000);
   await expect(page.locator(".cb-time")).toHaveText("34.0s");
@@ -238,6 +249,7 @@ test("GM can open the breach directly from the primary scene toolbar", async ({ 
 });
 
 test("Foundry adapter restricts launch and interaction and uses core chat for automatic reports", async ({ page }) => {
+  await page.clock.install();
   await mockFoundry(page);
   const shared = await page.evaluate(async () => {
     const controls = [{ name: "token", tools: [] }];
@@ -276,8 +288,21 @@ test("Foundry adapter restricts launch and interaction and uses core chat for au
     game.user = game.users.get("runner");
     Hooks.call("createChatMessage", window.challengeMessage);
     Hooks.call("createChatMessage", window.challengeMessage);
+    const root = document.createElement("div");
+    root.className = "message-content";
+    document.body.append(root);
+    Hooks.call("renderChatMessage", window.challengeMessage, root);
   });
+  await page.clock.runFor(60000);
+  await expect(page.locator(".cb-board")).toHaveCount(0);
+  expect(await page.evaluate(() => game.messages.size)).toBe(1);
+  await page.getByRole("button", { name: "Jack in", exact: true }).click();
   await expect(page.locator(".cb-board")).toHaveCount(1);
+  await expect(page.locator(".cb-time")).toHaveText("49.0s");
+  await page.evaluate(() => document.querySelector(".message-content button").click());
+  await expect(page.locator(".cb-board")).toHaveCount(1);
+  await page.clock.runFor(1000);
+  await expect(page.locator(".cb-time")).toHaveText("48.0s");
   await page.getByRole("button", { name: "Jack out", exact: true }).click();
   await expect.poll(() => page.evaluate(() => game.messages.size)).toBe(2);
   const report = await page.evaluate(() => {
@@ -291,7 +316,8 @@ test("Foundry adapter restricts launch and interaction and uses core chat for au
   expect(report.whisper).toEqual(["runner", "gm", "gm2"]);
   expect(report.text).toContain("Not reached: Password");
   expect(report.text).toContain("0/3");
-  expect(report.text).toContain("Player report");
+  expect(report.text).not.toContain("Player report");
+  expect(report.text).not.toContain("adjudication");
   expect(report.text).not.toContain("Interface");
   expect(report.text).not.toContain("Enemy runner");
   const forged = await page.evaluate(() => {
@@ -326,6 +352,25 @@ test("invitations render as short GM and runner messages, including older chat c
   expect(messages.runner).toContain("Jack in");
   expect(messages.gm).not.toContain("Old verbose");
   expect(messages.runner).not.toContain("Old verbose");
+});
+
+test("missing character role defaults to Interface 0 and the GM can override it", async ({ page }) => {
+  await mockFoundry(page);
+  const ranks = await page.evaluate(async () => {
+    const api = game.modules.get("foundry-cipher-breach").api;
+    const fallback = await api.start({ user: "other", targetCount: 1 });
+    const overridden = await api.start({ user: "other", rank: 6, targetCount: 1 });
+    return [fallback, overridden].map(message => message.getFlag("foundry-cipher-breach", "challenge").config.rank);
+  });
+  expect(ranks).toEqual([0, 6]);
+  await page.evaluate(() => game.modules.get("foundry-cipher-breach").api.open());
+  await page.locator('[name="participant"]').selectOption("other");
+  await expect(page.locator('[name="rank"]')).toHaveValue("0");
+  await expect(page.locator(".cb-config")).toContainText("No Netrunner role found");
+  await page.locator('[name="rank"]').fill("6");
+  await page.locator('[type="submit"]').click();
+  await expect.poll(() => page.evaluate(() => [...game.messages.values()].at(-1)
+    .getFlag("foundry-cipher-breach", "challenge").config.rank)).toBe(6);
 });
 
 for (const lang of ["de", "en"]) {
@@ -364,15 +409,21 @@ test("Foundry report fails closed if the source is removed, and forged invitatio
   await page.evaluate(async () => {
     const message = await game.modules.get("foundry-cipher-breach").api.start({ user: "runner" });
     game.user = game.users.get("runner");
-    Hooks.call("createChatMessage", { ...message, author: game.users.get("other") });
-    if (document.querySelector(".cb-board")) throw new Error("Forged invitation opened.");
-    Hooks.call("createChatMessage", message);
-    game.messages.delete(message.id);
+    const root = document.createElement("div");
+    root.className = "message-content";
+    document.body.append(root);
+    Hooks.call("renderChatMessage", { ...message, author: game.users.get("other") }, root);
+    window.forgedInvitation = root.textContent;
+    Hooks.call("renderChatMessage", message, root);
+    window.challengeMessage = message;
   });
+  expect(await page.evaluate(() => window.forgedInvitation)).toContain("Invalid or unavailable");
+  await page.getByRole("button", { name: "Jack in", exact: true }).click();
+  await page.evaluate(() => game.messages.delete(window.challengeMessage.id));
   await page.getByRole("button", { name: "Jack out", exact: true }).click();
   await expect(page.locator(".cb-board")).toHaveCount(0);
   expect(await page.evaluate(() => game.messages.size)).toBe(0);
-  expect(await page.evaluate(() => window.notices.length)).toBe(2);
+  expect(await page.evaluate(() => window.notices.length)).toBe(1);
 });
 
 test("mobile layout remains within the viewport", async ({ page }) => {
@@ -380,7 +431,7 @@ test("mobile layout remains within the viewport", async ({ page }) => {
   await page.goto("/preview/");
   await page.locator("#open").click();
   await page.locator('[name="dv"]').selectOption("20");
-  await page.locator('[type="submit"]').click();
+  await startPreview(page);
   const dimensions = await page.locator(".cb-board").evaluate(node => ({
     client: node.clientWidth, scroll: node.scrollWidth, viewport: window.innerWidth, width: node.getBoundingClientRect().width
   }));
@@ -401,7 +452,7 @@ test("DV 16-20 are available and no-move timeout is automatically reported", asy
   }
   await page.locator('[name="participant"]').selectOption("demo0");
   await expect(page.locator(".cb-config .cb-metadata")).toContainText("4.1s");
-  await page.locator('[type="submit"]').click();
+  await startPreview(page);
   await expect(page.locator(".cb-cell")).toHaveCount(64);
   await page.clock.runFor(4200);
   await expect(page.locator("#results .cb-report")).toContainText("Nicht erreicht");
@@ -414,7 +465,7 @@ test("compact hack monitor omits helper controls and keeps noise active, respect
   await page.clock.install();
   await page.goto("/preview/?lang=en");
   await page.locator("#open").click();
-  await page.locator('[type="submit"]').click();
+  await startPreview(page);
   const board = page.locator(".cb-board");
   const animation = () => page.locator(".cb-matrix").evaluate(node => getComputedStyle(node, "::after").animationName);
   await expect(board.locator("button:not(.cb-cell)")).toHaveCount(1);
@@ -523,7 +574,7 @@ test("red terminal arranges timer and buffer above matrix and upload targets", a
   await page.locator("#open").click();
   await page.locator('[name="dv"]').selectOption("20");
   await expect(page.locator(".cb-config")).toContainText("höchstens eines von drei Vierer-Zielen");
-  await page.locator('[type="submit"]').click();
+  await startPreview(page);
   const color = selector => page.locator(selector).first().evaluate(node => getComputedStyle(node).backgroundColor);
   expect(await color(".cb-board")).toBe("rgb(16, 14, 22)");
   expect(await color(".cb-targets li")).toBe("rgb(25, 18, 27)");
@@ -636,7 +687,7 @@ for (const lang of ["de", "en"]) {
       return breachConfig({ dv: 12, rank: 4, repeatedFailures: 2, pressureConditions: 2, enemyRunners: 1 }).seconds;
     });
     await expect(page.locator(".cb-config .cb-metadata")).toContainText(`${seconds}s`);
-    await page.locator('[type="submit"]').click();
+    await startPreview(page);
     await expect(page.locator(".cb-counterhack")).toBeVisible();
     await expect(page.locator(".cb-board-meta")).toHaveCount(0);
     const matrix = await page.locator(".cb-cell").allTextContents();
@@ -658,7 +709,7 @@ for (const lang of ["de", "en"]) {
     await expect(page.locator(".cb-config .cb-error")).not.toBeEmpty();
     await page.locator('[name="repeatedFailures"]').fill("0");
     await expect(page.locator(".cb-config .cb-error")).toBeEmpty();
-    await page.locator('[type="submit"]').click();
+    await startPreview(page);
     await expect(page.locator(".cb-counterhack")).toHaveCount(0);
   });
 }
@@ -716,7 +767,7 @@ for (const lang of ["de", "en"]) {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`/preview/?lang=${lang}`);
     await page.locator("#open").click();
-    await page.locator('[type="submit"]').click();
+    await startPreview(page);
     const signal = page.locator(".cb-signal-lost");
     await expect(signal).toBeHidden();
     await page.clock.runFor(39000);
@@ -744,7 +795,7 @@ for (const lang of ["de", "en"]) {
   test(`objective symbols follow ${lang} names and custom names remain safe`, async ({ page }) => {
     await page.goto(`/preview/?lang=${lang}`);
     await page.locator("#open").click();
-    await page.locator('[type="submit"]').click();
+    await startPreview(page);
     const icons = page.locator(".cb-target-icon");
     await expect(icons).toHaveCount(3);
     for (const [index, type] of ["password", "data", "control"].entries()) {
@@ -756,7 +807,7 @@ for (const lang of ["de", "en"]) {
     await page.locator(".cb-jack").click();
     await page.locator("#open").click();
     await page.locator('[name="objective1"]').fill("<img src=x onerror=alert(1)>");
-    await page.locator('[type="submit"]').click();
+    await startPreview(page);
     await expect(icons.first()).toHaveAttribute("data-objective", "target");
     await expect(page.locator(".cb-targets strong").first()).toHaveText("<img src=x onerror=alert(1)>");
     await expect(page.locator(".cb-board img")).toHaveCount(0);
@@ -792,7 +843,7 @@ test("GM symbol preview follows edited target text, prioritizes devices and neve
     }
   }
   await name.fill("Control / Kameras ausschalten");
-  await page.locator('[type="submit"]').click();
+  await startPreview(page);
   await expect(page.locator(".cb-target-icon").first()).toHaveAttribute("data-objective", "camera");
 });
 
@@ -845,7 +896,7 @@ for (const action of ["jack", "escape"]) {
     await page.clock.install();
     await page.goto("/preview/");
     await page.locator("#open").click();
-    await page.locator('[type="submit"]').click();
+    await startPreview(page);
     await page.locator(".cb-cell:enabled").first().click();
     await page.clock.runFor(1000);
     if (action === "jack") await page.locator(".cb-jack").click();
@@ -888,7 +939,7 @@ test("jack out closes during a pending timeout report without changing or duplic
 test("virtual data landscape is decorative, bounded and respects reduced motion", async ({ page }) => {
   await page.goto("/preview/");
   await page.locator("#open").click();
-  await page.locator('[type="submit"]').click();
+  await startPreview(page);
   await expect(page.locator(".cb-datafield")).toHaveAttribute("aria-hidden", "true");
   await expect(page.locator(".cb-datastream")).toHaveCount(7);
   await expect(page.locator(".cb-datastream").first()).toContainText("hash[");

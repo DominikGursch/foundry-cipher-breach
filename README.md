@@ -12,7 +12,7 @@ Ein kostenloses, in Deutsch und Englisch verfügbares Breach-Matrixrätsel für 
 
 1. **Cipher Breach öffnen** drücken und als SL DV, Zielanzahl, Zieltexte und einen Demo-Runner wählen.
 2. Der Interface-Rang wird aus der Beispielrolle gelesen. Matrixgröße, Puffer, Sequenzlängen und Zeit werden live berechnet; der Rang ist überschreibbar.
-3. **Rätsel starten** stellt die Einladung an den simulierten Spieler zu. Sobald sich das Spielfeld öffnet, läuft der Countdown – auch ohne ersten Zug.
+3. **Rätsel starten** stellt die Einladung an den simulierten Spieler zu. Erst **Einstöpseln** öffnet das Spielfeld und startet den Countdown – auch ohne ersten Zug.
 4. Nach Ende erscheint unter dem Spielfenster der Spielerbericht mit erreichten und verfehlten Zielen. Das Fenster schließen, um ihn zu sehen.
 
 Die Vorschau verwendet **dieselbe Engine, dieselben UI-Komponenten und dieselben Styles** wie das Modul. Sie simuliert SL-Konfiguration, Charakterwerte, Spieleröffnung und Ergebnisanzeige in einem Browser, **nicht** Foundry-Berechtigungen, Netzwerkzustellung oder echtes Mehrspielerverhalten.
@@ -46,9 +46,9 @@ Für den ersten echten Test eine Sicherung der Welt anlegen, das Modul aktiviere
 
 Die SL wählt **Basis-DV, manuelle Erschwernisse, bis zu drei benannte Ziele und Teilnehmer**. Bei effektivem DV6 sind wie in der Referenz höchstens zwei Ziele verfügbar. Standardziele sind Passwort, Daten und Kontrolle; ihre Beschreibungen lassen sich frei ändern. Sie sind mögliche Erfolge, keine automatischen Änderungen an Charakteren oder Weltobjekten.
 
-Der Interface-Rang wird aus dem zugewiesenen Charakter gelesen: eingebettetes Item `type: "role"`, Name Netrunner bzw. `system.mainRoleAbility` mit Interface, Rang in `system.rank`. Auch Rang **0** bleibt erhalten. Fehlen Charakter oder Rolle, zeigt die Oberfläche dies ausdrücklich an und schlägt Übungsrang 4 zur Prüfung durch die SL vor. Andere Systeme können den Rang manuell angeben; kein System wird vorausgesetzt und kein Charakterwert wird geschrieben.
+Der Interface-Rang wird aus dem zugewiesenen Charakter gelesen: eingebettetes Item `type: "role"`, Name Netrunner bzw. `system.mainRoleAbility` mit Interface, Rang in `system.rank`. Auch Rang **0** bleibt erhalten. Fehlen Charakter oder Rolle, zeigt die Oberfläche dies ausdrücklich an und schlägt Interface 0 vor; die SL kann den Rang ändern. Andere Systeme können den Rang manuell angeben; kein System wird vorausgesetzt und kein Charakterwert wird geschrieben.
 
-Die SL sendet eine GM-eigene Chat-Einladung. Beim zugewiesenen Online-Spieler öffnet sich das Rätsel automatisch und **startet sofort den Timer**. Offline-Spieler können die behaltene Chat-Einladung nach dem Wiederverbinden öffnen; dann beginnt ihre Zeit. Nur der Teilnehmer erhält den Spielknopf; derselbe Chat-Eintrag öffnet nicht mehrere gleichzeitige Spielfenster.
+Die SL sendet eine GM-eigene Chat-Einladung. Erst wenn der zugewiesene Spieler **Einstöpseln / Jack in** drückt, öffnet sich das Rätsel und **startet der Timer**. Offline-Spieler können die behaltene Chat-Einladung nach dem Wiederverbinden öffnen. Nur der Teilnehmer erhält den Spielknopf; derselbe Chat-Eintrag öffnet nicht mehrere gleichzeitige Spielfenster.
 
 - Erster Code: oberste Zeile. Danach abwechselnd Spalte und Zeile der letzten Auswahl; keine Zelle doppelt.
 - Der Countdown beginnt **beim Öffnen des Spielfelds**, bewusst früher als in der Referenz. Abwarten zählt zur Laufzeit; ohne Zug endet der Breach ebenfalls bei Zeitablauf und wird gemeldet.
@@ -176,7 +176,7 @@ await game.modules.get("foundry-cipher-breach").api.start({
 });
 ```
 
-Optional `rank: 6` zum Überschreiben sowie `repeatedFailures: 1`, `pressureConditions: 2`, `enemyRunners: 1` für einen erschwerten Neuversuch. Alle Zähler sind standardmäßig 0. Die API erstellt stets eine neue Einladung; alte Einladungen werden nicht verändert. Ohne auslesbare Rolle muss das Makro den Rang ausdrücklich angeben; ungültige Eingaben werfen Fehler statt einen anderen Teilnehmer oder DV zu wählen.
+Optional `rank: 6` zum Überschreiben sowie `repeatedFailures: 1`, `pressureConditions: 2`, `enemyRunners: 1` für einen erschwerten Neuversuch. Alle Zähler sind standardmäßig 0. Die API erstellt stets eine neue Einladung; alte Einladungen werden nicht verändert. Ohne auslesbare Rolle verwendet das Makro Rang 0, sofern kein Rang angegeben ist; ungültige Eingaben werfen Fehler statt einen anderen Teilnehmer oder DV zu wählen.
 
 ## Vertrauensgrenze
 
@@ -201,18 +201,18 @@ Lokale Vorschau: `http://127.0.0.1:8080/preview/`. Optional `PORT=8090 npm run p
 
 Tests decken alle unterstützten DV-/Rang-/Zielkombinationen, Referenzformeln, eindeutige und einzeln lösbare Ziele, gemeinsame Lösbarkeit bei ausreichendem Puffer, falsche Einstiege bei hohen DVs, Alt-Schemata, Timer, Überlappung, Teilerfolge und Paketformat ab. Der DV20-/Rang-0-Test prüft 100 reproduzierbare Rätsel auf unterschiedliche Ziele und höchstens einen Zieltreffer pro Vierer-Puffer. Chromium prüft Konfiguration, Charakterauslesung, Countdown, Hervorhebungen, automatisches Melden, Fehlerwiederholung, DE-/EN-Parität und mobile Darstellung. Foundry-Hooks/Berechtigungsgrenzen werden mit einem Adapter-Testdouble geprüft, **nicht mit einem laufenden Foundry-Server**.
 
-`npm run package` erzeugt `dist/foundry-cipher-breach-v<VERSION>.zip` und `dist/module.json`. Das ZIP enthält ausschließlich Laufzeit, Manifest und Lizenz-/Dokumentationsdateien; `dist` ist unversioniert. Für einen neuen regulären Release `version` in `module.json`, `package.json` und `package-lock.json` sowie die versionsgebundene `download`-URL in `module.json` aktualisieren und die Änderungen testen und committen. Danach auf dem gewünschten Commit einen passenden neuen Tag erstellen und pushen, beispielsweise für Version 0.2.2:
+`npm run package` erzeugt `dist/foundry-cipher-breach-v<VERSION>.zip` und `dist/module.json`. Das ZIP enthält ausschließlich Laufzeit, Manifest und Lizenz-/Dokumentationsdateien; `dist` ist unversioniert. Für einen neuen regulären Release `version` in `module.json`, `package.json` und `package-lock.json` sowie die versionsgebundene `download`-URL in `module.json` aktualisieren und die Änderungen testen und committen. Danach auf dem gewünschten Commit einen passenden neuen Tag erstellen und pushen, beispielsweise für Version 0.2.3:
 
 ```sh
-git tag v0.2.2
-git push origin v0.2.2
+git tag v0.2.3
+git push origin v0.2.3
 ```
 
 Der Workflow **Release Foundry module** prüft die Tag-/Versionsübereinstimmung, führt Node- und Browsertests aus und veröffentlicht erst danach Manifest und ZIP als GitHub-Release. Vor Veröffentlichung die Revision prüfen und möglichst einen echten Foundry-v12-Test durchführen. Der Workflow erstellt keine Commits und verändert keine Branches. Bei einem fehlgeschlagenen Lauf vor einem erneuten Start prüfen, ob bereits ein unvollständiger Release angelegt wurde.
 
 ## English
 
-An independently implemented, free Foundry v12+ matrix puzzle using the linked reference module's **house-rule DV presets and Interface formulas**, extended with original DV 16/18/20 presets, not official Cyberpunk RED Netrunning. High DVs use twelve symbols, distinct individually solvable objectives and misleading first-code entries; all objectives are no longer guaranteed to fit one buffer. At DV20 / rank 0, only one of the three objectives can fit the four-slot buffer. The GM uses a terminal button to select DV, up to three named objectives and a participant; the character's Netrunner role supplies the editable rank. Buffer length is `4 + Math.ceil(rank / 2)`, independent of DV. The assigned player's board opens automatically and starts its timer immediately, even without moves. Completed runs send a partial/full result through core chat without a send button. The red-on-dark protocol terminal places timer/buffer above matrix/upload objectives and includes always-on subtle scanlines and noise. It respects reduced motion and never flashes the board. Both languages share the same engine, DOM components and CSS; browser tests verify desktop/mobile parity. Failures stay visible and turn the jack-out action into a transmission retry. No actor or world data is modified.
+An independently implemented, free Foundry v12+ matrix puzzle using the linked reference module's **house-rule DV presets and Interface formulas**, extended with original DV 16/18/20 presets, not official Cyberpunk RED Netrunning. High DVs use twelve symbols, distinct individually solvable objectives and misleading first-code entries; all objectives are no longer guaranteed to fit one buffer. At DV20 / rank 0, only one of the three objectives can fit the four-slot buffer. The GM uses a terminal button to select DV, up to three named objectives and a participant; the character's Netrunner role supplies the editable rank, or defaults to 0 if missing. Buffer length is `4 + Math.ceil(rank / 2)`, independent of DV. The assigned player opens the board using Jack in; the timer starts immediately, even without moves. Completed runs send a partial/full result through core chat without a send button. The red-on-dark protocol terminal places timer/buffer above matrix/upload objectives and includes always-on subtle scanlines and noise. It respects reduced motion and never flashes the board. Both languages share the same engine, DOM components and CSS; browser tests verify desktop/mobile parity. Failures stay visible and turn the jack-out action into a transmission retry. No actor or world data is modified.
 
 Use the [English browser demo](https://dominikgursch.github.io/foundry-cipher-breach/preview/?lang=en) for the shared engine/UI and simulated GM/player flow. Actions provides automated checks and an installable module ZIP artifact. The demo and adapter testdouble are not real Foundry multiplayer verification. All player reports remain untrusted; the GM manually adjudicates every effect.
 
