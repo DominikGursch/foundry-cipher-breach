@@ -36,11 +36,13 @@ test("ZIP entries are at root, have valid offsets, CRC and deterministic bytes",
 test("manifest entry points exist, release URLs match, all runtime files are packaged", async () => {
   const manifest = JSON.parse(await read("module.json"));
   assert.equal(manifest.id, "foundry-cipher-breach");
-  assert.equal(manifest.version, "0.1.0");
+  assert.match(manifest.version, /^\d+\.\d+\.\d+$/);
+  assert.equal(manifest.version, JSON.parse(await read("package.json")).version);
+  assert.equal(manifest.version, JSON.parse(await read("package-lock.json")).version);
   assert.equal(manifest.compatibility.minimum, "12");
   assert.equal(manifest.compatibility.verified, undefined);
   const base = `https://github.com/DominikGursch/foundry-cipher-breach/releases/download/v${manifest.version}`;
-  assert.equal(manifest.manifest, `${base}/module.json`);
+  assert.equal(manifest.manifest, "https://github.com/DominikGursch/foundry-cipher-breach/releases/latest/download/module.json");
   assert.equal(manifest.download, `${base}/foundry-cipher-breach-v${manifest.version}.zip`);
   const paths = [...manifest.esmodules, ...manifest.styles, ...manifest.languages.map(lang => lang.path)];
   for (const name of paths) {

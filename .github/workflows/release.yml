@@ -1,0 +1,48 @@
+name: Release Foundry module
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - name: Validate release tag and manifest
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          node --input-type=module -e '
+          import { readFileSync } from "node:fs";
+          const manifest = JSON.parse(readFileSync("module.json", "utf8"));
+          if (!/^\d+\.\d+\.\d+$/.test(manifest.version) || process.env.RELEASE_TAG !== `v${manifest.version}`) {
+            throw new Error("Release tag must match the stable manifest version.");
+          }'
+      - run: npm ci
+      - run: npm test
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser
+      - run: npm run package
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$RELEASE_TAG" \
+            dist/module.json "dist/foundry-cipher-breach-${RELEASE_TAG}.zip" \
+            --verify-tag \
+            --title "Cipher Breach ${RELEASE_TAG}" \
+            --notes "Kompatibilität mit Foundry VTT 12 und Cyberpunk RED 0.92.4 wurde anhand der Schnittstellen und mit Testdoubles geprüft. Ein echter Foundry-Mehrspieler-Livetest steht noch aus. Spielberichte sind ungeprüft; die SL entscheidet über die Folgen."

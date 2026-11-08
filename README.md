@@ -23,21 +23,18 @@ Unter **[Actions](https://github.com/DominikGursch/foundry-cipher-breach/actions
 
 ## Foundry installieren
 
-Das Modul hat keine Laufzeitabhängigkeiten. Für einen Test aus einem Checkout oder Actions-Artefakt:
+Das Modul hat keine Laufzeitabhängigkeiten und wird über Foundrys Oberfläche installiert:
 
-1. Das innere ZIP `foundry-cipher-breach-v0.1.0.zip` nach `Data/modules/foundry-cipher-breach` entpacken. `module.json` muss unmittelbar dort liegen.
-2. Foundry neu laden und **Cipher Breach** in der Welt aktivieren.
-3. Als SL im **Token-Werkzeugbereich den Terminal-Knopf** drücken. Alternativ unter **Einstellungen > Einstellungen konfigurieren > Moduleinstellungen > Cipher Breach** öffnen.
-
-Ein Checkout benötigt nur `module.json`, `scripts`, `styles`, `lang`, `LICENSE`, `NOTICE.md` und `README.md` im Modulverzeichnis. `node_modules`, Vorschau und Tests gehören nicht in Foundry.
-
-Das Manifest verweist auf den vorhandenen `v0.1.0`-Release:
+1. Im Foundry-Setup **Add-on Modules > Install Module** öffnen und unter **Manifest URL** diese Adresse einfügen:
 
 ```text
-https://github.com/DominikGursch/foundry-cipher-breach/releases/download/v0.1.0/module.json
+https://github.com/DominikGursch/foundry-cipher-breach/releases/latest/download/module.json
 ```
 
-**Achtung: Der veröffentlichte Release `v0.1.0` enthält einen älteren Entwicklungsstand als diese Version und die GitHub-Demo.** Für einen Live-Test des aktuellen Branches stattdessen den erfolgreichen [Actions-Lauf für diesen Branch](https://github.com/DominikGursch/foundry-cipher-breach/actions/workflows/test.yml?query=branch%3Adominikgursch-effective-adventure) öffnen und das Artefakt **foundry-cipher-breach** herunterladen. Das innere Modul-ZIP wie oben beschrieben installieren; der Download kann eine GitHub-Anmeldung erfordern. Alternativ `npm ci && npm run package` im aktuellen Checkout ausführen und das ZIP aus `dist/` installieren. Die Release-Assets und der Manifest-Link werden dadurch nicht aktualisiert.
+2. **Install** wählen und **Cipher Breach** anschließend in der Welt unter **Manage Modules** aktivieren.
+3. Als SL im **Token-Werkzeugbereich den Terminal-Knopf** drücken. Alternativ unter **Einstellungen > Einstellungen konfigurieren > Moduleinstellungen > Cipher Breach** öffnen.
+
+Der stabile Manifest-Link verweist auf den neuesten regulären [Release](https://github.com/DominikGursch/foundry-cipher-breach/releases/latest). Foundry kann darüber auch spätere Updates suchen und installieren. Der alte Vorabrelease `v0.1.0` ist veraltet und sollte nicht installiert werden.
 
 **Kompatibilitätsprüfung für Foundry 12.343 / CPRed 0.92.4:** [CPRed 0.92.4](https://foundryvtt.com/packages/cyberpunk-red-core) gibt Foundry 12 als unterstützte Version an. Das Netrunner-Rollen-Item dieses Releases verwendet `type: "role"`, `system.mainRoleAbility: "Interface"` und `system.rank`; diese Felder liest das Modul. Auch die v12-Schnittstellen für Einstellungen, Szenenwerkzeuge, Chat und Collections wurden anhand der öffentlichen Dokumentation geprüft. Insbesondere verwendet der Chat-Adapter das seit v12 gültige [`ChatMessage.author`](https://github.com/foundryvtt/foundryvtt/issues/9843) statt des alten `user`-Felds. Ein lokaler Test simuliert die Adapter-Schnittstellen, ersetzt aber **keinen echten Foundry-Server oder Mehrspieler-Livetest**. Die Mindestversion des Moduls ist v12; eine neuere Foundry-Version ist nicht als geprüft ausgewiesen.
 
@@ -202,11 +199,14 @@ Lokale Vorschau: `http://127.0.0.1:8080/preview/`. Optional `PORT=8090 npm run p
 
 Tests decken alle unterstützten DV-/Rang-/Zielkombinationen, Referenzformeln, gemeinsame Lösbarkeit bei niedrigen DVs, einzelne Lösbarkeit und falsche Einstiege bei hohen DVs, Alt-Schemata, Timer, Überlappung, Teilerfolge und Paketformat ab. Der DV20-/Rang-0-Test prüft 100 reproduzierbare Rätsel auf unterschiedliche Ziele und höchstens einen Zieltreffer pro Vierer-Puffer. Chromium prüft Konfiguration, Charakterauslesung, Countdown, Hervorhebungen, automatisches Melden, Fehlerwiederholung, DE-/EN-Parität und mobile Darstellung. Foundry-Hooks/Berechtigungsgrenzen werden mit einem Adapter-Testdouble geprüft, **nicht mit einem laufenden Foundry-Server**.
 
-`npm run package` erzeugt `dist/foundry-cipher-breach-v0.1.0.zip` und `dist/module.json`. Das ZIP enthält ausschließlich Laufzeit, Manifest und Lizenz-/Dokumentationsdateien; `dist` ist unversioniert. Release erst nach Prüfung der beabsichtigten Revision und möglichst einem echten Foundry-v12-Test veröffentlichen:
+`npm run package` erzeugt `dist/foundry-cipher-breach-v<VERSION>.zip` und `dist/module.json`. Das ZIP enthält ausschließlich Laufzeit, Manifest und Lizenz-/Dokumentationsdateien; `dist` ist unversioniert. Für einen neuen regulären Release `version` in `module.json`, `package.json` und `package-lock.json` sowie die versionsgebundene `download`-URL in `module.json` aktualisieren und die Änderungen testen und committen. Danach auf dem gewünschten Commit einen passenden neuen Tag erstellen und pushen, beispielsweise für Version 0.2.1:
 
 ```sh
-gh release create v0.1.0 dist/module.json dist/foundry-cipher-breach-v0.1.0.zip --prerelease --title "Cipher Breach 0.1.0" --notes "DV/Interface house-rule breach. Unverified player reports; manual GM adjudication. See README for runtime verification status."
+git tag v0.2.1
+git push origin v0.2.1
 ```
+
+Der Workflow **Release Foundry module** prüft die Tag-/Versionsübereinstimmung, führt Node- und Browsertests aus und veröffentlicht erst danach Manifest und ZIP als GitHub-Release. Vor Veröffentlichung die Revision prüfen und möglichst einen echten Foundry-v12-Test durchführen. Der Workflow erstellt keine Commits und verändert keine Branches. Bei einem fehlgeschlagenen Lauf vor einem erneuten Start prüfen, ob bereits ein unvollständiger Release angelegt wurde.
 
 ## English
 

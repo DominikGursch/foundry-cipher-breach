@@ -66,8 +66,13 @@ export function buildArchive(entries) {
 export async function packageModule() {
   const manifestBytes = await readFile(path.join(ROOT, "module.json"));
   const manifest = JSON.parse(manifestBytes);
-  if (manifest.id !== "foundry-cipher-breach" || manifest.version !== "0.1.0") {
-    throw new Error("Check release ID/version and URLs before packaging.");
+  const packageInfo = JSON.parse(await readFile(path.join(ROOT, "package.json"), "utf8"));
+  const base = "https://github.com/DominikGursch/foundry-cipher-breach/releases";
+  if (manifest.id !== "foundry-cipher-breach" || !/^\d+\.\d+\.\d+$/.test(manifest.version) ||
+      manifest.version !== packageInfo.version ||
+      manifest.manifest !== `${base}/latest/download/module.json` ||
+      manifest.download !== `${base}/download/v${manifest.version}/foundry-cipher-breach-v${manifest.version}.zip`) {
+    throw new Error("Check release ID, version, package version and URLs before packaging.");
   }
   const entries = await Promise.all(RELEASE_FILES.map(async name => ({
     name, bytes: await readFile(path.join(ROOT, ...name.split("/")))
